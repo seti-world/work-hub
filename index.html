@@ -81,6 +81,7 @@ body{
   line-height:1.6;
 }
 button,input,select,textarea{font:inherit;color:inherit}
+textarea{max-width:100%}
 select{background:var(--field);color:var(--ink)}
 select option{background:var(--surface);color:var(--ink)}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
@@ -132,10 +133,10 @@ h1 span{font-weight:400;color:var(--ink-soft);margin-left:8px;font-size:13px}
 
 /* ── 터치 화면(스마트폰·태블릿)에서는 누르기 쉽게 키웁니다 ── */
 @media (pointer:coarse){
-  .btn{padding:10px 14px}
-  .btn.small{padding:8px 11px;font-size:13px}
-  .chip{padding:7px 14px;font-size:13px}
-  .menu .btn{padding:12px 14px}
+  .btn{padding:8px 12px;font-size:13.5px}
+  .btn.small{padding:6px 9px;font-size:12.5px}
+  .chip{padding:5px 11px;font-size:12.5px}
+  .menu .btn{padding:11px 13px}
   input,select,textarea{font-size:16px}  /* 아이폰에서 입력 시 화면이 확대되는 것 방지 */
   .search input{font-size:16px}
   .entry .pick,.cand input[type=checkbox]{width:19px;height:19px}
@@ -145,6 +146,7 @@ h1 span{font-weight:400;color:var(--ink-soft);margin-left:8px;font-size:13px}
 main{display:grid;grid-template-columns:246px 1fr;min-height:calc(100vh - 59px)}
 #btnBack{display:none}
 #btnBack2{display:none}   /* 모바일 내용 화면의 상단 고정줄에서만 보입니다 */
+#fab{display:none}        /* 모바일 내용 화면에서만 보이는 ＋ 단추 */
 aside{
   background:var(--aside);border-right:1px solid var(--rule);padding:14px 0;
   /* 주제·키워드가 많아도 사이드바 안에서만 스크롤되게 화면에 붙여 둡니다 */
@@ -383,6 +385,12 @@ section.panel{padding:22px 26px;max-width:940px}
   main{grid-template-columns:1fr}
   body[data-mnav="list"] #panelWrap{display:none}
   body[data-mnav="panel"] aside{display:none}
+  body[data-mnav="panel"] #fab{
+    display:flex;align-items:center;justify-content:center;
+    position:fixed;right:16px;bottom:20px;width:50px;height:50px;border-radius:50%;
+    background:var(--ink);color:var(--on-ink);border:0;font-size:25px;line-height:1;
+    box-shadow:0 6px 16px rgba(0,0,0,.35);z-index:15;cursor:pointer;
+  }
   aside{border-right:0;border-bottom:0;padding:10px 0 24px;
     position:static;max-height:none;overflow:visible}
   .aside-head{padding:0 14px 8px}
@@ -392,12 +400,16 @@ section.panel{padding:22px 26px;max-width:940px}
   section.panel{padding:16px 12px}
   .panel-head h2{font-size:19px}
 
-  /* 폰에서는 글자를 키우고, 긴 주소·경로는 강제로 줄바꿈합니다 */
-  body{font-size:15.5px;line-height:1.65;overflow-wrap:anywhere}
-  .panel-note{font-size:14px}
-  .entry .ttl{font-size:15px}
-  .entry .detail,.entry .ttl.body-only{font-size:14.5px}
-  .tags{font-size:12.5px}
+  /* 폰에서는 글자를 키우고, 긴 주소·경로는 강제로 줄바꿈하며, 가로 넘침을 차단합니다 */
+  html,body{overflow-x:clip}
+  body{font-size:15px;line-height:1.6;overflow-wrap:anywhere}
+  .panel-note{font-size:13.5px;max-width:100%}
+  .panel-note textarea{max-width:100%}
+  .entry .ttl{font-size:14.5px}
+  .entry .detail,.entry .ttl.body-only{font-size:14px}
+  .tags{font-size:12px}
+  /* 기록추가·붙여넣기 줄은 폰에서 숨기고, 오른쪽 아래 ＋ 단추로 대신합니다 */
+  .inputrow{display:none}
 
   /* 타임라인의 왼쪽 날짜 열과 세로선을 없애 본문이 화면 폭을 다 씁니다.
      날짜는 구분선이 보여주므로 각 기록에는 시각만 작게 남깁니다. */
@@ -495,6 +507,8 @@ section.panel{padding:22px 26px;max-width:940px}
     <section class="panel" id="panel"></section>
   </div>
 </main>
+
+<button id="fab" title="기록·대화 추가">＋</button>
 
 <script>
 "use strict";
@@ -1125,10 +1139,11 @@ function renderPanel(){
 
   /* 모든 주제 — 유형·경로·미결 조건을 걸고 주제별로 나눠 봅니다 */
   if(state.activeId === ALL){
-    const allInputs = actionRow(`
+    const allInputs = `<div class="actions inputrow">
         <button class="btn" id="pasteHere">대화 붙여넣기</button>
         <button class="btn" id="txtHere">대화 파일 (.txt)</button>
-        <button class="btn" id="emlHere">메일 파일 (.eml)</button>`);
+        <button class="btn" id="emlHere">메일 파일 (.eml)</button>
+      </div>`;
     const allCtl = `<button class="btn small ${todoView?"primary":""}" id="todoToggle">${todoView?"주제별로 보기":"할일 모아보기"}</button>`;
 
     /* 할일 모아보기 — 모든 주제의 미결 할일을 기한이 가까운 순서로 */
@@ -1235,11 +1250,12 @@ function renderPanel(){
     <div class="panel-note">
       <textarea id="topicNote" rows="2" placeholder="이 주제의 현재 상태를 한두 줄로">${esc(t.note||"")}</textarea>
     </div>
-    ${actionRow(`
+    <div class="actions inputrow">
       <button class="btn primary" id="addItem">+ 기록 추가</button>
       <button class="btn" id="pasteHere">대화 붙여넣기</button>
       <button class="btn" id="txtHere">대화 파일 (.txt)</button>
-      <button class="btn" id="emlHere">메일 파일 (.eml)</button>`)}
+      <button class="btn" id="emlHere">메일 파일 (.eml)</button>
+    </div>
     <div class="stickybar">
     ${actionRow(`
       <span class="ord">
@@ -3270,6 +3286,29 @@ document.body.dataset.mnav = "list";   // 모바일 시작 화면은 주제 목�
 $("#btnBack").onclick = () => setMNav("list");
 $("#btnBack2").onclick = () => setMNav("list");
 $("#btnUndo2").onclick = undo;
+
+/* 폰의 ＋ 단추: 기록·대화 추가 방법을 한곳에 모아 보여줍니다 */
+$("#fab").onclick = () => {
+  const v = modal("추가",
+    `<div class="menu-col">
+      <button class="btn" data-a="item">+ 기록 직접 추가</button>
+      <button class="btn" data-a="paste">대화 붙여넣기</button>
+      <button class="btn" data-a="txt">대화 파일 (.txt) 읽기</button>
+      <button class="btn" data-a="eml">메일 파일 (.eml) 읽기</button>
+    </div>`,
+    `<button class="btn primary" data-x>닫기</button>`);
+  v.querySelector("[data-x]").onclick = () => v.remove();
+  v.addEventListener("click", e => {
+    const b = e.target.closest("[data-a]");
+    if(!b) return;
+    const a = b.dataset.a;
+    v.remove();
+    if(a === "item") openItemModal(null);
+    else if(a === "paste") openPasteModal();
+    else if(a === "txt") pickFiles("#txtIn", fs => openTxtModal(fs));
+    else if(a === "eml") pickFiles("#emlIn", fs => openEmlModal(fs));
+  });
+};
 
 $("#btnPaste").onclick = openPasteModal;
 $("#btnPrint").onclick = openPrintModal;
