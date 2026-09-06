@@ -389,11 +389,25 @@ section.panel{padding:22px 26px;max-width:940px}
   #topicList{display:block;padding:0}
   .topic{padding:13px 14px}                /* 세로 목록, 손가락 크기 */
   .topic .nm{font-size:15px}
-  section.panel{padding:16px 14px}
-  .panel-head h2{font-size:18px}
-  .entry{grid-template-columns:52px 1fr;gap:14px}
-  .timeline::before{left:57px}
-  .entry .dot{left:53px}
+  section.panel{padding:16px 12px}
+  .panel-head h2{font-size:19px}
+
+  /* 폰에서는 글자를 키우고, 긴 주소·경로는 강제로 줄바꿈합니다 */
+  body{font-size:15.5px;line-height:1.65;overflow-wrap:anywhere}
+  .panel-note{font-size:14px}
+  .entry .ttl{font-size:15px}
+  .entry .detail,.entry .ttl.body-only{font-size:14.5px}
+  .tags{font-size:12.5px}
+
+  /* 타임라인의 왼쪽 날짜 열과 세로선을 없애 본문이 화면 폭을 다 씁니다.
+     날짜는 구분선이 보여주므로 각 기록에는 시각만 작게 남깁니다. */
+  .entry{grid-template-columns:1fr;gap:3px;padding:10px 0 2px}
+  .entry .date{text-align:left;font-size:0;line-height:1;padding:0}
+  .entry .date .tm{font-size:12px;display:inline;opacity:.75}
+  .entry .dot{display:none}
+  .timeline::before{display:none}
+  .sub-body .timeline::before{display:none}
+  .entry .body{padding:11px 13px}
   .row,.row3{grid-template-columns:1fr}
   .row4{grid-template-columns:1fr 1fr}
   .veil{padding:12px}
@@ -401,11 +415,13 @@ section.panel{padding:22px 26px;max-width:940px}
   .sec-h{padding:14px 4px 6px 14px;font-size:13px}
   .sec-x{padding:14px 12px 4px 4px;font-size:17px}
   .topic.in-sec{padding-left:11px}
-  .dayline{padding-left:66px}
+  .dayline{padding:16px 0 2px 2px;font-size:12.5px}
   .board{grid-template-columns:1fr}
-  .cand{grid-template-columns:22px 64px 1fr}
-  .cand select[data-k]{grid-column:2;justify-self:stretch;margin-top:4px}
-  .cand select[data-t]{grid-column:3;justify-self:stretch;margin-top:4px}
+  .cand{grid-template-columns:22px 1fr 1fr;gap:4px 8px}
+  .cand .cd{grid-column:2 / 4}
+  .cand .ct{grid-column:2 / 4;font-size:14px}
+  .cand select[data-k]{grid-column:2;justify-self:stretch}
+  .cand select[data-t]{grid-column:3;justify-self:stretch}
   .bulk select{max-width:130px}
 }
 
