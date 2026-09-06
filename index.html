@@ -215,6 +215,10 @@ section.panel{padding:22px 26px;max-width:940px}
 .entry.seen:hover .body{opacity:.85}
 .entry .ttl{font-weight:600;line-height:1.4}
 .entry .ttl.body-only{white-space:pre-wrap;font-weight:500}
+.mail-toggle{display:block;width:100%;text-align:left;border:0;background:none;
+  padding:0;cursor:pointer;color:inherit;font-weight:600;line-height:1.4}
+.mail-toggle .arr{color:var(--ink-soft);font-size:11px;margin-right:5px}
+.mail-toggle:hover{color:var(--msg)}
 .entry.done .ttl{text-decoration:line-through}
 .tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:3px;font-size:11.5px}
 .tag{color:var(--ink-soft)}
@@ -482,7 +486,7 @@ section.panel{padding:22px 26px;max-width:940px}
         <button class="btn" id="btnMerge">파일 합치기 (추가)</button>
         <hr>
         <button class="btn danger" id="btnReset" hidden>모두 지우기</button>
-        <div class="menu-ver">2026-09-06 5판</div>
+        <div class="menu-ver">2026-09-06 6판</div>
       </div>
     </div>
     <span class="dirty" id="dirty" hidden>저장 안 됨</span>
@@ -959,11 +963,20 @@ function renderTopics(){
 
 /* 메신저 대화처럼 제목이 본문 앞부분을 줄인 것뿐이면
    같은 내용이 두 번 보이지 않게 본문 전체를 한 번만 보여줍니다.
-   제목이 "…"로 잘린 기록은 본문이 있으면 무조건 본문을 보여줘 잘림이 없게 합니다. */
+   제목이 "…"로 잘린 기록은 본문이 있으면 무조건 본문을 보여줘 잘림이 없게 합니다.
+   메일은 제목만 보이는 접힌 상태가 기본이고, 제목을 누르면 본문이 펼쳐집니다. */
+const expandedMail = new Set();
 function entryTextHTML(i){
   const title = String(i.title || "");
   const head = title.replace(/…\s*$/, "").trim();
   const clipped = /…\s*$/.test(title);
+  if(i.channel === "메일" && i.detail){
+    const open = expandedMail.has(i.id);
+    return `<button class="ttl mail-toggle" data-exp="${i.id}"
+        title="${open?"본문 접기":"본문 펼치기"}">
+        <span class="arr">${open?"▾":"▸"}</span>${esc(title)}</button>` +
+      (open ? `<div class="detail">${esc(i.detail)}</div>` : "");
+  }
   if(i.detail && (clipped || (head && normText(i.detail).includes(normText(head)))))
     return `<div class="ttl body-only">${esc(i.detail)}</div>`;
   return `<div class="ttl">${esc(title)}</div>` +
@@ -3027,6 +3040,16 @@ $("#panel").addEventListener("change", e => {
 
 $("#panel").addEventListener("click", e => {
   const t = activeTopic();
+
+  // 메일 제목을 누르면 본문을 접었다 폈다 합니다
+  const ex = e.target.closest("[data-exp]");
+  if(ex){
+    const id = ex.dataset.exp;
+    if(expandedMail.has(id)) expandedMail.delete(id);
+    else expandedMail.add(id);
+    renderPanel();
+    return;
+  }
 
   // 해시태그 칩을 누르면 그 키워드로 전체 검색
   const hb = e.target.closest("[data-tag]");
