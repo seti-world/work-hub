@@ -482,7 +482,7 @@ section.panel{padding:22px 26px;max-width:940px}
         <button class="btn" id="btnMerge">파일 합치기 (추가)</button>
         <hr>
         <button class="btn danger" id="btnReset" hidden>모두 지우기</button>
-        <div class="menu-ver">2026-09-06 4판</div>
+        <div class="menu-ver">2026-09-06 5판</div>
       </div>
     </div>
     <span class="dirty" id="dirty" hidden>저장 안 됨</span>
@@ -700,8 +700,13 @@ async function idbDel(k){
 function paintSync(){
   const b = $("#btnSync");
   if(!b) return;
-  b.hidden = !canFS;
-  if(!canFS) return;
+  b.hidden = false;
+  if(!canFS){
+    // 아이폰·아이패드 등 파일 연결이 안 되는 기기: 안내 창을 보여줍니다
+    b.textContent = "동기화 안내";
+    b.title = "이 기기에서 컴퓨터와 기록을 주고받는 방법";
+    return;
+  }
   if(fileHandle){
     b.textContent = "동기화: " + fileHandle.name;
     b.title = "자동 저장이 이 파일과 연결되어 있습니다. 눌러서 바꾸거나 해제하세요.";
@@ -3379,11 +3384,29 @@ function pickFiles(id, run){
 }
 $("#btnLoad").onclick = () => pickFiles("#fileIn", fs => load(fs[0]));
 $("#btnMerge").onclick = () => pickFiles("#mergeIn", fs => mergeFiles(fs));
+/* 파일 연결이 안 되는 기기(아이폰·아이패드 등)용 안내 */
+function openSyncHelp(){
+  const v = modal("이 기기에서의 동기화",
+    `<p class="hint" style="line-height:1.7">
+     이 기기의 브라우저는 파일 자동 저장 연결을 지원하지 않아,
+     기록은 <b>이 기기의 브라우저 안에 자동 저장</b>됩니다.
+     컴퓨터와 주고받는 방법:<br><br>
+     <b>① 컴퓨터 → 이 기기 (가져오기)</b><br>
+     메뉴 → <b>파일 합치기 (추가)</b> → 파일 선택 창에서 파일 앱 →
+     OneDrive → 동기화 JSON 선택.
+     이미 있는 기록은 자동으로 걸러지므로 여러 번 해도 안전합니다.<br><br>
+     <b>② 이 기기 → 컴퓨터 (보내기)</b><br>
+     메뉴 → <b>파일로 내보내기</b> → 내려받은 JSON을 파일 앱에서 OneDrive에 저장
+     → 컴퓨터에서 <b>파일 합치기</b>로 넣기.<br><br>
+     ※ 아이폰 파일 앱에 OneDrive가 안 보이면: OneDrive 앱을 설치한 뒤
+     파일 앱 → 찾아보기 → 오른쪽 위 ⋯ → 사이드바 편집 → OneDrive 켜기.
+    </p>`,
+    `<button class="btn primary" data-x>닫기</button>`);
+  v.querySelector("[data-x]").onclick = () => v.remove();
+}
+
 $("#btnSync").onclick = async () => {
-  if(!canFS){
-    alert("이 브라우저는 파일 연결을 지원하지 않습니다. 크롬이나 엣지에서 열어 주세요.");
-    return;
-  }
+  if(!canFS){ openSyncHelp(); return; }
   // 지난 세션에 연결해 둔 파일이 있으면, 누른 김에 권한을 다시 받아 잇습니다.
   if(!fileHandle && pendingHandle){
     try{
