@@ -143,7 +143,8 @@ h1 span{font-weight:400;color:var(--ink-soft);margin-left:8px;font-size:13px}
 
 /* ── 본체 ── */
 main{display:grid;grid-template-columns:246px 1fr;min-height:calc(100vh - 59px)}
-#btnBack{display:none}   /* 모바일 내용 화면에서만 보입니다 */
+#btnBack{display:none}
+#btnBack2{display:none}   /* 모바일 내용 화면의 상단 고정줄에서만 보입니다 */
 aside{
   background:var(--aside);border-right:1px solid var(--rule);padding:14px 0;
   /* 주제·키워드가 많아도 사이드바 안에서만 스크롤되게 화면에 붙여 둡니다 */
@@ -368,21 +369,20 @@ section.panel{padding:22px 26px;max-width:940px}
 .pr-opt input{width:auto!important;margin-right:7px;vertical-align:-1px}
 
 @media (max-width:760px){
-  header{padding:11px 14px;gap:10px}
-  h1{font-size:15px}
-  h1 span{display:none}
-  .search{order:3;flex-basis:100%}
-  .toolbar{gap:5px;margin-left:auto}
+  /* 상단 고정줄은 [← 목록][검색][메뉴] 한 줄만. 제목·붙여넣기·되돌리기는 고정 해제 */
+  header{padding:8px 10px;gap:8px;flex-wrap:nowrap}
+  h1{display:none}
+  #btnPaste{display:none}
+  #btnUndo{display:none}
+  body[data-mnav="panel"] #btnBack2{display:inline-block;white-space:nowrap}
+  .search{flex:1;min-width:0}
+  .toolbar{gap:5px;margin-left:0}
   .toolbar .btn{padding:8px 11px;font-size:13px}
   /* ── 모바일 전용 구성: 목록 화면 ↔ 내용 화면 전환 ──
      주제를 누르면 내용 화면으로 넘어가고, "← 주제 목록"으로 돌아옵니다. */
   main{grid-template-columns:1fr}
   body[data-mnav="list"] #panelWrap{display:none}
   body[data-mnav="panel"] aside{display:none}
-  body[data-mnav="panel"] #btnBack{
-    display:block;margin:10px 14px 0;padding:10px 14px;width:calc(100% - 28px);
-    text-align:left;font-weight:600;
-  }
   aside{border-right:0;border-bottom:0;padding:10px 0 24px;
     position:static;max-height:none;overflow:visible}
   .aside-head{padding:0 14px 8px}
@@ -448,6 +448,7 @@ section.panel{padding:22px 26px;max-width:940px}
 
 <header>
   <h1>업무 관리 도구<span id="fileTag">새 문서</span></h1>
+  <button class="btn" id="btnBack2">← 목록</button>
   <div class="search"><input id="q" type="search" placeholder="모든 주제에서 검색 — #키워드, 자료명, 회의내용, 경로"></div>
   <div class="toolbar">
     <button class="btn primary" id="btnPaste">대화 붙여넣기</button>
@@ -455,6 +456,7 @@ section.panel{padding:22px 26px;max-width:940px}
     <div class="menu-wrap">
       <button class="btn" id="btnMenu" aria-haspopup="true" aria-expanded="false">메뉴 ▾</button>
       <div class="menu" id="appMenu" hidden>
+        <button class="btn" id="btnUndo2" disabled>되돌리기</button>
         <button class="btn" id="btnTheme">화면: 자동</button>
         <hr>
         <button class="btn" id="btnPrint">인쇄 · PDF</button>
@@ -829,11 +831,13 @@ function pushUndo(label){
   paintUndo();
 }
 function paintUndo(){
-  const b = $("#btnUndo");
-  if(!b) return;
   const last = undoStack[undoStack.length - 1];
-  b.disabled = !last;
-  b.title = last ? `되돌리기: ${last.label}` : "되돌릴 것이 없습니다";
+  ["#btnUndo", "#btnUndo2"].forEach(sel => {
+    const b = $(sel);
+    if(!b) return;
+    b.disabled = !last;
+    b.title = last ? `되돌리기: ${last.label}` : "되돌릴 것이 없습니다";
+  });
 }
 function undo(){
   const u = undoStack.pop();
@@ -1121,12 +1125,11 @@ function renderPanel(){
 
   /* 모든 주제 — 유형·경로·미결 조건을 걸고 주제별로 나눠 봅니다 */
   if(state.activeId === ALL){
-    const allBtns = `
+    const allInputs = actionRow(`
         <button class="btn" id="pasteHere">대화 붙여넣기</button>
         <button class="btn" id="txtHere">대화 파일 (.txt)</button>
-        <button class="btn" id="emlHere">메일 파일 (.eml)</button>
-        <span style="flex:1"></span>
-        <button class="btn ${todoView?"primary":""}" id="todoToggle">${todoView?"주제별로 보기":"할일 모아보기"}</button>`;
+        <button class="btn" id="emlHere">메일 파일 (.eml)</button>`);
+    const allCtl = `<button class="btn small ${todoView?"primary":""}" id="todoToggle">${todoView?"주제별로 보기":"할일 모아보기"}</button>`;
 
     /* 할일 모아보기 — 모든 주제의 미결 할일을 기한이 가까운 순서로 */
     if(todoView){
@@ -1140,7 +1143,8 @@ function renderPanel(){
       p.innerHTML = `
         <div class="panel-head"><h2>모든 주제 — 미결 할일</h2></div>
         <p class="panel-note">끝나지 않은 할일 ${rows.length}건을 기한이 가까운 순서로 모았습니다. 항목을 누르면 해당 주제로 이동합니다.</p>
-        <div class="stickybar">${actionRow(allBtns)}</div>
+        ${allInputs}
+        <div class="stickybar">${actionRow(allCtl)}</div>
         ${rows.length ? rows.map(({t,i}) => `<div class="hit" data-go="${t.id}" data-item="${i.id}">
           <div class="where">${esc(t.name)}${i.owner?` · ${esc(i.owner)}`:""}</div>
           <div>${esc(i.title)}</div>
@@ -1155,8 +1159,9 @@ function renderPanel(){
     p.innerHTML = `
       <div class="panel-head"><h2>모든 주제</h2></div>
       <p class="panel-note">조건에 맞는 기록을 주제별로 모았습니다. 지금 ${total}건.</p>
+      ${allInputs}
       <div class="stickybar">
-      ${actionRow(allBtns)}
+      ${actionRow(allCtl)}
       ${filterRow("")}
       </div>
       ${groups.length ? groups.map(g => `
@@ -1230,20 +1235,21 @@ function renderPanel(){
     <div class="panel-note">
       <textarea id="topicNote" rows="2" placeholder="이 주제의 현재 상태를 한두 줄로">${esc(t.note||"")}</textarea>
     </div>
-    <div class="stickybar">
     ${actionRow(`
       <button class="btn primary" id="addItem">+ 기록 추가</button>
       <button class="btn" id="pasteHere">대화 붙여넣기</button>
       <button class="btn" id="txtHere">대화 파일 (.txt)</button>
-      <button class="btn" id="emlHere">메일 파일 (.eml)</button>
-      <span style="flex:1"></span>
+      <button class="btn" id="emlHere">메일 파일 (.eml)</button>`)}
+    <div class="stickybar">
+    ${actionRow(`
       <span class="ord">
         <button class="btn small ${viewMode==="time"?"primary":""}" data-vm="time">타임라인</button>
         <button class="btn small ${viewMode==="table"?"primary":""}" data-vm="table">표</button>
         <button class="btn small ${viewMode==="board"?"primary":""}" data-vm="board">칸반</button>
       </span>
-      ${viewMode==="time" && (t.groups||[]).length?`<button class="btn ${flatView?"primary":""}" id="flatToggle">${flatView?"소주제별로 보기":"시간순 전체 보기"}</button>`:""}
-      ${viewMode==="time"?`<button class="btn ${merging?"primary":""}" id="mergeMode">${merging?"선택 끝내기":"선택"}</button>`:""}`)}
+      ${viewMode==="time" && (t.groups||[]).length?`<button class="btn small ${flatView?"primary":""}" id="flatToggle">${flatView?"소주제별":"시간순"}</button>`:""}
+      <span style="flex:1"></span>
+      ${viewMode==="time"?`<button class="btn small ${merging?"primary":""}" id="mergeMode">${merging?"선택 끝내기":"선택"}</button>`:""}`)}
     ${viewMode==="board" ? "" : filterRow("")}
     ${merging && viewMode==="time"?`<div class="mergebar">
       <span>${picked.size}건 선택</span>
@@ -1276,6 +1282,7 @@ function render(){ renderTopics(); renderPanel(); paintUndo(); fitHead(); }
    데스크톱에서는 CSS 가 적용되지 않아 아무 영향이 없습니다. */
 function setMNav(v){
   document.body.dataset.mnav = v;
+  fitHead();   // ← 목록 단추가 나타나고 사라지면 머리띠 높이가 달라집니다
   if(v === "list") window.scrollTo({ top: 0 });
 }
 
@@ -3261,6 +3268,8 @@ $("#q").addEventListener("input", e => {
 
 document.body.dataset.mnav = "list";   // 모바일 시작 화면은 주제 목록
 $("#btnBack").onclick = () => setMNav("list");
+$("#btnBack2").onclick = () => setMNav("list");
+$("#btnUndo2").onclick = undo;
 
 $("#btnPaste").onclick = openPasteModal;
 $("#btnPrint").onclick = openPrintModal;
