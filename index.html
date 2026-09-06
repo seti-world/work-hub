@@ -129,6 +129,7 @@ h1 span{font-weight:400;color:var(--ink-soft);margin-left:8px;font-size:13px}
 .menu .btn{border:0;background:none;text-align:left;border-radius:3px;padding:9px 12px}
 .menu .btn:hover{background:var(--hover)}
 .menu hr{border:0;border-top:1px solid var(--rule-soft);margin:4px 2px}
+.menu-ver{font-size:10.5px;color:var(--ink-soft);text-align:right;padding:4px 8px 2px}
 .menu .btn.danger{color:var(--alert)}
 
 /* ── 터치 화면(스마트폰·태블릿)에서는 누르기 쉽게 키웁니다 ── */
@@ -144,6 +145,8 @@ h1 span{font-weight:400;color:var(--ink-soft);margin-left:8px;font-size:13px}
 
 /* ── 본체 ── */
 main{display:grid;grid-template-columns:246px 1fr;min-height:calc(100vh - 59px)}
+/* 그리드 칸이 내용 때문에 화면 폭을 넘어 늘어나지 않게 (모바일 가로 밀림의 근본 원인) */
+aside,#panelWrap,section.panel{min-width:0}
 #btnBack{display:none}
 #btnBack2{display:none}   /* 모바일 내용 화면의 상단 고정줄에서만 보입니다 */
 #fab{display:none}        /* 모바일 내용 화면에서만 보이는 ＋ 단추 */
@@ -397,7 +400,7 @@ section.panel{padding:22px 26px;max-width:940px}
   #topicList{display:block;padding:0}
   .topic{padding:13px 14px}                /* 세로 목록, 손가락 크기 */
   .topic .nm{font-size:15px}
-  section.panel{padding:16px 12px}
+  section.panel{padding:16px 12px;max-width:100%}
   .panel-head h2{font-size:19px}
 
   /* 폰에서는 글자를 키우고, 긴 주소·경로는 강제로 줄바꿈하며, 가로 넘침을 차단합니다 */
@@ -479,6 +482,7 @@ section.panel{padding:22px 26px;max-width:940px}
         <button class="btn" id="btnMerge">파일 합치기 (추가)</button>
         <hr>
         <button class="btn danger" id="btnReset" hidden>모두 지우기</button>
+        <div class="menu-ver">2026-09-06 4판</div>
       </div>
     </div>
     <span class="dirty" id="dirty" hidden>저장 안 됨</span>
