@@ -1,0 +1,3395 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#e8eaee">
+<script>
+/* 저장해 둔 화면 모드를 첫 그리기 전에 적용해, 켤 때 흰 화면이 번쩍이지 않게 합니다. */
+try{
+  var th = localStorage.getItem("workhub:theme");
+  if(th === "dark" || th === "light") document.documentElement.dataset.theme = th;
+}catch(e){}
+</script>
+<title>업무 관리 도구</title>
+<style>
+:root{
+  --paper:#e8eaee;
+  --surface:#ffffff;
+  --ink:#17233a;
+  --ink-soft:#5b6577;
+  --rule:#ccd2dc;
+  --rule-soft:#e2e6ec;
+  --disk:#2f5d50;
+  --mail:#8a5a2b;
+  --msg:#3a4e8c;
+  --etc:#6b6f78;
+  --alert:#a8323b;
+  --focus:#3a4e8c;
+  --field:#fbfcfd;
+  --hover:#f2f4f7;
+  --primary-hover:#25344f;
+  --aside:#f3f4f7;
+  --aside-hover:#e9ebf0;
+  --seen-bg:#f7f8fa;
+  --code-bg:#f4f6f9;
+  --sub-bg:#f5f7fa;
+  --merge-bg:#eef1f6;
+  --accent-soft:#f2f5fc;
+  --on-ink:#ffffff;
+  --veil:rgba(23,35,58,.42);
+  --modal-shadow:0 12px 40px rgba(23,35,58,.28);
+  --bar-shadow:0 6px 10px -8px rgba(23,35,58,.35);
+  color-scheme:light;
+}
+/* 어두운 화면 — 시스템 설정을 따르거나(자동), 메뉴에서 직접 고를 수 있습니다 */
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#14181f; --surface:#1d232e; --ink:#dfe4ec; --ink-soft:#949dae;
+    --rule:#39424f; --rule-soft:#2a3240;
+    --disk:#66ab97; --mail:#c99a63; --msg:#93a7e4; --etc:#8b909a;
+    --alert:#e57c84; --focus:#93a7e4;
+    --field:#171c25; --hover:#252d3a; --primary-hover:#cbd4e2;
+    --aside:#171c24; --aside-hover:#222a36; --seen-bg:#1a2029;
+    --code-bg:#151a23; --sub-bg:#202734; --merge-bg:#222b3a; --accent-soft:#243048;
+    --on-ink:#14181f; --veil:rgba(0,0,0,.55);
+    --modal-shadow:0 12px 40px rgba(0,0,0,.6);
+    --bar-shadow:0 6px 10px -8px rgba(0,0,0,.7);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#14181f; --surface:#1d232e; --ink:#dfe4ec; --ink-soft:#949dae;
+  --rule:#39424f; --rule-soft:#2a3240;
+  --disk:#66ab97; --mail:#c99a63; --msg:#93a7e4; --etc:#8b909a;
+  --alert:#e57c84; --focus:#93a7e4;
+  --field:#171c25; --hover:#252d3a; --primary-hover:#cbd4e2;
+  --aside:#171c24; --aside-hover:#222a36; --seen-bg:#1a2029;
+  --code-bg:#151a23; --sub-bg:#202734; --merge-bg:#222b3a; --accent-soft:#243048;
+  --on-ink:#14181f; --veil:rgba(0,0,0,.55);
+  --modal-shadow:0 12px 40px rgba(0,0,0,.6);
+  --bar-shadow:0 6px 10px -8px rgba(0,0,0,.7);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Pretendard","Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",sans-serif;
+  font-size:14px;
+  line-height:1.6;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+select{background:var(--field);color:var(--ink)}
+select option{background:var(--surface);color:var(--ink)}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ── 상단 ── */
+header{
+  position:sticky;top:0;z-index:9;
+  background:var(--surface);
+  border-bottom:1px solid var(--rule);
+  padding:14px 22px;
+  display:flex;flex-wrap:wrap;gap:14px;align-items:center;
+}
+h1{font-size:16px;font-weight:700;margin:0;letter-spacing:-.01em;white-space:nowrap}
+h1 span{font-weight:400;color:var(--ink-soft);margin-left:8px;font-size:13px}
+.search{flex:1;min-width:180px;position:relative}
+.search input{
+  width:100%;padding:7px 11px;border:1px solid var(--rule);
+  border-radius:3px;background:var(--field);
+}
+.toolbar{display:flex;gap:7px;flex-wrap:wrap}
+.btn{
+  border:1px solid var(--rule);background:var(--surface);
+  padding:7px 12px;border-radius:3px;cursor:pointer;white-space:nowrap;
+}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--ink);color:var(--on-ink);border-color:var(--ink)}
+.btn.primary:hover{background:var(--primary-hover)}
+.btn.small{padding:3px 8px;font-size:12px}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--ink-soft)}
+.btn.ghost:hover{background:var(--hover)}
+.dirty{color:var(--alert);font-size:12px;white-space:nowrap}
+.dirty.ok{color:var(--disk)}
+.dirty.busy{color:var(--ink-soft)}
+
+/* ── 메뉴 ── */
+.menu-wrap{position:relative;display:inline-block}
+.menu{
+  position:absolute;right:0;top:calc(100% + 5px);z-index:30;
+  background:var(--surface);border:1px solid var(--rule);border-radius:4px;
+  box-shadow:var(--modal-shadow);min-width:186px;padding:5px;
+  display:flex;flex-direction:column;
+}
+.menu[hidden]{display:none}
+.menu .btn{border:0;background:none;text-align:left;border-radius:3px;padding:9px 12px}
+.menu .btn:hover{background:var(--hover)}
+.menu hr{border:0;border-top:1px solid var(--rule-soft);margin:4px 2px}
+.menu .btn.danger{color:var(--alert)}
+
+/* ── 터치 화면(스마트폰·태블릿)에서는 누르기 쉽게 키웁니다 ── */
+@media (pointer:coarse){
+  .btn{padding:10px 14px}
+  .btn.small{padding:8px 11px;font-size:13px}
+  .chip{padding:7px 14px;font-size:13px}
+  .menu .btn{padding:12px 14px}
+  input,select,textarea{font-size:16px}  /* 아이폰에서 입력 시 화면이 확대되는 것 방지 */
+  .search input{font-size:16px}
+  .entry .pick,.cand input[type=checkbox]{width:19px;height:19px}
+}
+
+/* ── 본체 ── */
+main{display:grid;grid-template-columns:246px 1fr;min-height:calc(100vh - 59px)}
+#btnBack{display:none}   /* 모바일 내용 화면에서만 보입니다 */
+aside{
+  background:var(--aside);border-right:1px solid var(--rule);padding:14px 0;
+  /* 주제·키워드가 많아도 사이드바 안에서만 스크롤되게 화면에 붙여 둡니다 */
+  position:sticky;top:var(--headh,59px);align-self:start;
+  max-height:calc(100vh - var(--headh,59px));overflow-y:auto;
+}
+.aside-head{padding:0 14px 10px;display:flex;justify-content:space-between;align-items:baseline}
+.aside-head b{font-size:12px;color:var(--ink-soft);font-weight:600}
+.topic{
+  display:block;width:100%;text-align:left;background:none;border:0;
+  border-left:3px solid transparent;padding:9px 14px;cursor:pointer;
+}
+.topic:hover{background:var(--aside-hover)}
+.topic.on{background:var(--surface);border-left-color:var(--ink)}
+.topic .nm{font-weight:600;display:block;line-height:1.35}
+.topic .meta{font-size:11.5px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.topic .meta .due{color:var(--alert);font-weight:600}
+
+section.panel{padding:22px 26px;max-width:940px}
+.panel-head{display:flex;gap:10px;align-items:flex-start;margin-bottom:4px}
+.panel-head h2{font-size:20px;margin:0;font-weight:700;letter-spacing:-.02em}
+.panel-note{color:var(--ink-soft);margin:2px 0 18px;max-width:70ch}
+.panel-note textarea{
+  width:100%;border:1px solid var(--rule-soft);border-radius:3px;
+  padding:7px 9px;resize:vertical;background:var(--field);
+}
+
+/* ── 필터 ── */
+.stickybar{position:sticky;top:var(--headh,60px);z-index:7;background:var(--paper);
+  padding-top:10px;margin-top:-10px;box-shadow:var(--bar-shadow)}
+.actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center;padding:2px 0 10px}
+.stickybar .filters{margin-bottom:0;padding-bottom:9px}
+.filters{display:flex;gap:6px;flex-wrap:wrap;align-items:center;
+  padding-bottom:10px;border-bottom:1px solid var(--rule);margin-bottom:2px}
+.chip{
+  border:1px solid var(--rule);background:var(--surface);
+  padding:3px 10px;border-radius:11px;cursor:pointer;font-size:12.5px;color:var(--ink-soft);
+}
+.chip.on{background:var(--ink);color:var(--on-ink);border-color:var(--ink)}
+.filters .sp{flex:1}
+
+/* ── 시간축 ── */
+.timeline{position:relative;padding:16px 0 0 0}
+.timeline::before{content:"";position:absolute;left:73px;top:0;bottom:14px;width:1px;background:var(--rule)}
+.entry{position:relative;display:grid;grid-template-columns:66px 1fr;gap:22px;padding:8px 0}
+.entry .date{
+  text-align:right;font-variant-numeric:tabular-nums;font-size:12.5px;
+  color:var(--ink-soft);padding-top:2px;line-height:1.4;
+}
+.entry .date .tm{display:block;font-size:11.5px;opacity:.8}
+.entry .dot{position:absolute;left:69px;top:12px;width:9px;height:9px;border-radius:50%;
+  background:var(--etc);border:2px solid var(--paper)}
+.entry.c-공유폴더 .dot{background:var(--disk)}
+.entry.c-메일 .dot{background:var(--mail)}
+.entry.c-메신저 .dot{background:var(--msg)}
+.entry .body{
+  background:var(--surface);border:1px solid var(--rule-soft);
+  border-radius:3px;padding:10px 13px;
+}
+.entry.done .body{opacity:.55}
+.entry.seen .body{opacity:.5;background:var(--seen-bg)}
+.entry.seen .ttl{color:var(--ink-soft);font-weight:500}
+.entry.seen:hover .body{opacity:.85}
+.entry .ttl{font-weight:600;line-height:1.4}
+.entry .ttl.body-only{white-space:pre-wrap;font-weight:500}
+.entry.done .ttl{text-decoration:line-through}
+.tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:3px;font-size:11.5px}
+.tag{color:var(--ink-soft)}
+.tag.kind{font-weight:600;color:var(--ink)}
+.tag.ch-공유폴더{color:var(--disk)}
+.tag.ch-메일{color:var(--mail)}
+.tag.ch-메신저{color:var(--msg)}
+.tag.due{color:var(--alert);font-weight:600}
+.tag.hash{color:var(--msg);cursor:pointer;border:0;background:none;padding:0;font-size:inherit}
+.tag.hash:hover{text-decoration:underline}
+.entry .detail{color:var(--ink-soft);white-space:pre-wrap;margin-top:3px}
+.entry .path{
+  font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--ink-soft);
+  background:var(--code-bg);border-radius:2px;padding:2px 6px;margin-top:5px;display:inline-block;
+  word-break:break-all;
+}
+.entry .acts{margin-top:6px;display:flex;gap:4px}
+
+.empty{color:var(--ink-soft);padding:34px 0;max-width:56ch}
+.empty b{display:block;color:var(--ink);margin-bottom:5px}
+
+/* ── 모달 ── */
+.veil{position:fixed;inset:0;background:var(--veil);display:flex;
+  align-items:flex-start;justify-content:center;padding:44px 16px;overflow:auto;z-index:9}
+.modal{background:var(--surface);border-radius:4px;width:100%;max-width:620px;
+  box-shadow:var(--modal-shadow)}
+.modal h3{margin:0;padding:16px 20px;border-bottom:1px solid var(--rule);font-size:15px}
+.modal .content{padding:18px 20px}
+.modal .foot{padding:13px 20px;border-top:1px solid var(--rule);display:flex;gap:8px;justify-content:flex-end}
+.field{margin-bottom:13px}
+.field label{display:block;font-size:12.5px;color:var(--ink-soft);margin-bottom:3px}
+.field input,.field select,.field textarea{
+  width:100%;padding:7px 9px;border:1px solid var(--rule);border-radius:3px;background:var(--field);
+}
+.field textarea{resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+.row4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:11px}
+.hint{font-size:12px;color:var(--ink-soft);margin:-6px 0 12px}
+
+/* 붙여넣기 후보 */
+.sub{border:1px solid var(--rule);border-radius:3px;background:var(--surface);
+  margin:12px 0 0;overflow:hidden}
+.sub-h{display:flex;align-items:center;gap:8px;padding:9px 11px;background:var(--sub-bg);
+  border-bottom:1px solid transparent}
+.sub.open .sub-h{border-bottom-color:var(--rule-soft)}
+.sub-h b{font-size:13.5px}
+.sub-h .cnt{font-size:11.5px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.sub-h .sp{flex:1}
+.sub-toggle{border:0;background:none;cursor:pointer;color:var(--ink-soft);
+  padding:0 2px;font-size:12px;line-height:1}
+.sub-body{padding:2px 11px 10px}
+.sub-body .timeline::before{left:69px}
+.tag.sub{color:var(--msg)}
+.ord{display:inline-flex;gap:2px}
+.loose-h{font-size:12px;color:var(--ink-soft);padding:16px 0 0}
+.topic.all .nm{color:var(--ink)}
+.topic.all{border-bottom:1px solid var(--rule-soft);margin-bottom:6px;padding-bottom:11px}
+.group{margin-bottom:10px}
+.group-h{display:flex;align-items:baseline;gap:9px;cursor:pointer;
+  padding:14px 0 2px;border-bottom:1px solid var(--rule-soft)}
+.group-h b{font-size:14.5px}
+.group-h span{font-size:12px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.group-h:hover b{text-decoration:underline}
+.mergebar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  background:var(--merge-bg);border:1px solid var(--rule);border-radius:3px;
+  padding:8px 11px;margin:10px 0 2px;font-size:12.5px;color:var(--ink-soft)}
+.mergebar .sp{flex:1}
+.entry .pick{width:15px;height:15px;margin-right:2px}
+.entry.picked .body{border-color:var(--msg);background:var(--accent-soft)}
+.mgroup{margin-bottom:14px}
+.mgroup-h{display:flex;align-items:baseline;gap:9px;padding:0 2px 6px}
+.mgroup-h b{font-size:13.5px}
+.mgroup-h span{font-size:11.5px;color:var(--ink-soft)}
+.mrow{grid-template-columns:26px 68px 1fr 70px}
+.mstat{font-size:11.5px;color:var(--disk);text-align:right}
+.mstat.dup{color:var(--alert)}
+.mstat.old{color:var(--ink-soft)}
+.moving{background:var(--code-bg);border:1px solid var(--rule-soft);border-radius:3px;
+  padding:9px 12px;margin-bottom:14px;line-height:1.5}
+.moving .tag{font-size:11.5px}
+.bulk{display:flex;gap:6px;align-items:center;flex-wrap:wrap;
+  padding:8px 2px 10px;font-size:12.5px;color:var(--ink-soft)}
+.bulk-sp{flex:1}
+.bulk select{padding:4px 6px;border:1px solid var(--rule);border-radius:3px;
+  max-width:180px;font-size:12.5px}
+.cands{border:1px solid var(--rule);border-radius:3px;max-height:330px;overflow:auto}
+.cand{display:grid;grid-template-columns:26px 68px 1fr 78px 132px;gap:8px;align-items:center;
+  padding:7px 9px;border-bottom:1px solid var(--rule-soft)}
+.cand:last-child{border-bottom:0}
+.cand input[type=checkbox]{width:15px;height:15px}
+.cand .cd{font-size:12px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.cand .ct{line-height:1.35;font-size:13px;word-break:break-word;white-space:pre-wrap}
+.cand select{padding:3px 5px;border:1px solid var(--rule);border-radius:3px;font-size:12px;min-width:0}
+.cand select.guessed{border-color:var(--msg);background:var(--accent-soft)}
+
+/* ── 사이드바: 묶음·읽지않음·키워드 ── */
+.sec-row{display:flex;align-items:center;min-width:0}
+.sec-row .sec-h{flex:1;width:auto;min-width:0}
+.sec-x{border:0;background:none;color:var(--ink-soft);cursor:pointer;font-size:15px;
+  padding:10px 14px 2px 4px;line-height:1;flex-shrink:0}
+.sec-x:hover{color:var(--ink)}
+.sec-h{display:flex;align-items:center;gap:6px;width:100%;text-align:left;border:0;background:none;
+  cursor:pointer;padding:12px 4px 4px 14px;font-size:12px;font-weight:700;color:var(--ink-soft);
+  white-space:nowrap}
+.sec-h .sec-nm{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.sec-h .cnt{flex-shrink:0}
+.menu-col{display:flex;flex-direction:column;gap:7px}
+.menu-col .btn{text-align:left}
+.sec-h .arr{font-size:10px}
+.sec-h .cnt{font-weight:400}
+.topic.in-sec{padding-left:26px}
+.topic.unread .nm{font-weight:700}
+.topic.unread .nm::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;
+  background:var(--msg);margin-right:6px;vertical-align:1px}
+.tagcloud{display:flex;flex-wrap:wrap;gap:5px;padding:4px 14px 0}
+.crumb{font-size:12px;color:var(--ink-soft)}
+
+/* ── 날짜 구분선 ── */
+.dayline{padding:14px 0 2px 88px;font-size:12px;font-weight:600;color:var(--ink-soft)}
+.dayline.pin-h{color:var(--mail)}
+
+/* ── 표 보기 ── */
+.tblwrap{overflow-x:auto;margin-top:12px}
+.tbl{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--rule-soft);font-size:13px}
+.tbl th,.tbl td{border-bottom:1px solid var(--rule-soft);padding:7px 9px;text-align:left;vertical-align:top}
+.tbl th{color:var(--ink-soft);font-size:12px;background:var(--sub-bg);white-space:nowrap}
+.tbl tr.seen{opacity:.55}
+.tbl .cd{font-size:12px;color:var(--ink-soft);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbl .where,.bcard .where{font-size:11.5px;color:var(--ink-soft);margin-top:2px}
+
+/* ── 할일 칸반 ── */
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.bcol{background:var(--aside);border:1px solid var(--rule-soft);border-radius:4px;padding:8px;min-height:120px}
+.bcol-h{font-size:12.5px;font-weight:600;color:var(--ink-soft);padding:2px 4px 8px}
+.bcard{background:var(--surface);border:1px solid var(--rule-soft);border-radius:3px;padding:8px 10px;margin-bottom:7px}
+.bacts{display:flex;gap:3px;margin-top:5px;align-items:center}
+.bempty{color:var(--ink-soft);font-size:12px;padding:4px;margin:0}
+
+/* ── 경과(댓글) ── */
+.cmts{margin-top:6px;border-top:1px dashed var(--rule-soft);padding-top:5px}
+.cmt{font-size:12.5px;color:var(--ink-soft);display:flex;gap:7px;align-items:baseline}
+.cmt .cd{font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cmt-x{border:0;background:none;color:var(--ink-soft);cursor:pointer;padding:0 3px}
+.cmt-x:hover{color:var(--alert)}
+.chip.x{padding:3px 7px}
+
+/* 검색결과 */
+.hit{background:var(--surface);border:1px solid var(--rule-soft);border-radius:3px;
+  padding:9px 12px;margin-bottom:7px;cursor:pointer}
+.hit:hover{border-color:var(--rule)}
+.hit .where{font-size:11.5px;color:var(--ink-soft)}
+.hit .hit-acts{margin-top:4px}
+.due-red{color:var(--alert)!important;font-weight:600}
+.entry.hilite .body{outline:2px solid var(--msg);background:var(--accent-soft)}
+.pr-opt{display:block;margin:4px 0;color:var(--ink);font-size:13.5px;cursor:pointer}
+.pr-opt input{width:auto!important;margin-right:7px;vertical-align:-1px}
+
+@media (max-width:760px){
+  header{padding:11px 14px;gap:10px}
+  h1{font-size:15px}
+  h1 span{display:none}
+  .search{order:3;flex-basis:100%}
+  .toolbar{gap:5px;margin-left:auto}
+  .toolbar .btn{padding:8px 11px;font-size:13px}
+  /* ── 모바일 전용 구성: 목록 화면 ↔ 내용 화면 전환 ──
+     주제를 누르면 내용 화면으로 넘어가고, "← 주제 목록"으로 돌아옵니다. */
+  main{grid-template-columns:1fr}
+  body[data-mnav="list"] #panelWrap{display:none}
+  body[data-mnav="panel"] aside{display:none}
+  body[data-mnav="panel"] #btnBack{
+    display:block;margin:10px 14px 0;padding:10px 14px;width:calc(100% - 28px);
+    text-align:left;font-weight:600;
+  }
+  aside{border-right:0;border-bottom:0;padding:10px 0 24px;
+    position:static;max-height:none;overflow:visible}
+  .aside-head{padding:0 14px 8px}
+  #topicList{display:block;padding:0}
+  .topic{padding:13px 14px}                /* 세로 목록, 손가락 크기 */
+  .topic .nm{font-size:15px}
+  section.panel{padding:16px 14px}
+  .panel-head h2{font-size:18px}
+  .entry{grid-template-columns:52px 1fr;gap:14px}
+  .timeline::before{left:57px}
+  .entry .dot{left:53px}
+  .row,.row3{grid-template-columns:1fr}
+  .row4{grid-template-columns:1fr 1fr}
+  .veil{padding:12px}
+  .modal .content{padding:14px 15px}
+  .sec-h{padding:14px 4px 6px 14px;font-size:13px}
+  .sec-x{padding:14px 12px 4px 4px;font-size:17px}
+  .topic.in-sec{padding-left:11px}
+  .dayline{padding-left:66px}
+  .board{grid-template-columns:1fr}
+  .cand{grid-template-columns:22px 64px 1fr}
+  .cand select[data-k]{grid-column:2;justify-self:stretch;margin-top:4px}
+  .cand select[data-t]{grid-column:3;justify-self:stretch;margin-top:4px}
+  .bulk select{max-width:130px}
+}
+
+/* ── 인쇄 · PDF ── */
+#printArea{display:none}
+@media print{
+  body>*:not(#printArea){display:none!important}
+  body{background:#fff}
+  #printArea{display:block;color:#000;font-size:11.5px;line-height:1.55}
+  #printArea h1{font-size:19px;margin:0 0 2px;letter-spacing:-.01em}
+  #printArea .pdate{color:#444;margin:0 0 16px}
+  #printArea h2{font-size:15px;margin:20px 0 4px;padding-bottom:3px;border-bottom:2px solid #000;break-after:avoid}
+  #printArea h3{font-size:12.5px;margin:12px 0 4px;break-after:avoid}
+  #printArea .pnote{white-space:pre-wrap;margin:2px 0 8px;color:#222}
+  #printArea table{width:100%;border-collapse:collapse;margin:2px 0 10px}
+  #printArea th,#printArea td{border:1px solid #888;padding:3px 6px;text-align:left;vertical-align:top}
+  #printArea th{background:#eee}
+  #printArea tr{break-inside:avoid}
+  #printArea .pd{white-space:pre-wrap;color:#333;margin-top:2px;font-size:11px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>업무 관리 도구<span id="fileTag">새 문서</span></h1>
+  <div class="search"><input id="q" type="search" placeholder="모든 주제에서 검색 — #키워드, 자료명, 회의내용, 경로"></div>
+  <div class="toolbar">
+    <button class="btn primary" id="btnPaste">대화 붙여넣기</button>
+    <button class="btn" id="btnUndo" disabled>되돌리기</button>
+    <div class="menu-wrap">
+      <button class="btn" id="btnMenu" aria-haspopup="true" aria-expanded="false">메뉴 ▾</button>
+      <div class="menu" id="appMenu" hidden>
+        <button class="btn" id="btnTheme">화면: 자동</button>
+        <hr>
+        <button class="btn" id="btnPrint">인쇄 · PDF</button>
+        <hr>
+        <button class="btn" id="btnSync" hidden>동기화 파일</button>
+        <button class="btn" id="btnSave">파일로 내보내기</button>
+        <button class="btn" id="btnLoad">파일 불러오기 (교체)</button>
+        <button class="btn" id="btnMerge">파일 합치기 (추가)</button>
+        <hr>
+        <button class="btn danger" id="btnReset" hidden>모두 지우기</button>
+      </div>
+    </div>
+    <span class="dirty" id="dirty" hidden>저장 안 됨</span>
+  </div>
+  <input type="file" id="fileIn" accept=".json,application/json,text/plain,*/*" hidden>
+  <input type="file" id="mergeIn" accept=".json,application/json,text/plain,*/*" multiple hidden>
+  <input type="file" id="emlIn" accept=".eml,message/rfc822" multiple hidden>
+  <input type="file" id="txtIn" accept=".txt,text/plain" multiple hidden>
+</header>
+
+<main>
+  <aside>
+    <div class="aside-head">
+      <b>주제</b>
+      <span style="display:flex;gap:5px">
+        <button class="btn small" id="btnSecAssign" title="기존 주제들을 골라 묶음으로 이동">묶음</button>
+        <button class="btn small" id="btnAddTopic">+ 추가</button>
+      </span>
+    </div>
+    <div id="topicList"></div>
+    <div id="tagList"></div>
+  </aside>
+
+  <div id="panelWrap">
+    <button class="btn" id="btnBack">← 주제 목록</button>
+    <section class="panel" id="panel"></section>
+  </div>
+</main>
+
+<script>
+"use strict";
+
+/* ─────────── 상태 ─────────── */
+const KINDS = ["자료","논의","결정","할일"];
+const CHANNELS = ["공유폴더","메일","메신저","기타"];
+let state = { topics: [], activeId: null, savedViews: [], closedSections: [], tagBans: [] };
+let filter = { kind: null, channel: null, openOnly: false, unseenOnly: false };
+let dirty = false;
+let searching = "";
+
+const $ = s => document.querySelector(s);
+const uid = () => Math.random().toString(36).slice(2, 10);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ── 해시태그 ──
+   글 속에 "#보고서"처럼 쓰면 자동으로 키워드가 되고,
+   기록 수정 창의 키워드 칸으로 직접 달 수도 있습니다. */
+const TAG_RE = /#([0-9A-Za-z가-힣_]{1,20})/g;
+function extractTags(){
+  const s = new Set();
+  for(const t of arguments)
+    String(t || "").replace(TAG_RE, (m, w) => {
+      // "#57 슬라이드"처럼 숫자뿐인 것은 번호 표기이지 키워드가 아닙니다.
+      if(/[가-힣A-Za-z_]/.test(w)) s.add(w);
+      return m;
+    });
+  return [...s];
+}
+function itemTags(i){
+  // 자동 인식된 키워드 중 숨김 목록(오인식 처리)에 든 것은 뺍니다.
+  // 직접 입력한 키워드(i.tags)는 숨김의 영향을 받지 않습니다.
+  const bans = new Set(state.tagBans || []);
+  return [...new Set([
+    ...(i.tags || []),
+    ...extractTags(i.title, i.detail).filter(w => !bans.has(w))
+  ])];
+}
+/* 컴퓨터의 현지 시간 기준 오늘. (toISOString 은 세계표준시라 한국에서는
+   오전 9시 이전에 하루 전 날짜가 나오므로 쓰지 않습니다.) */
+const today = () => {
+  const d = new Date();
+  return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+};
+
+/* Claude 안에서 열면 아티팩트 저장소를 쓰고, 일반 브라우저에서 열면 localStorage 에 자동 저장합니다.
+   어느 쪽도 없으면 JSON 파일 내보내기 방식으로 동작합니다. */
+const STORE_KEY = "workhub:v1";
+const BACKUP_KEY = "workhub:v1:prev";
+const hasCloud = typeof window.storage === "object" && window.storage !== null
+                 && typeof window.storage.get === "function";
+const hasLocal = (() => {
+  try{ localStorage.setItem("workhub:t", "1"); localStorage.removeItem("workhub:t"); return true; }
+  catch{ return false; }
+})();
+const canStore = hasCloud || hasLocal;
+let storeOk = canStore;
+
+async function backendGet(key){
+  if(hasCloud){ const r = await window.storage.get(key); return r && r.value ? r.value : null; }
+  return localStorage.getItem(key);
+}
+async function backendSet(key, val){
+  if(hasCloud) await window.storage.set(key, val, false);
+  else localStorage.setItem(key, val);
+}
+async function backendDel(key){
+  if(hasCloud) await window.storage.delete(key, false);
+  else localStorage.removeItem(key);
+}
+
+function status(text, cls){
+  const el = $("#dirty");
+  el.hidden = !text;
+  el.textContent = text || "";
+  el.className = "dirty" + (cls ? " " + cls : "");
+}
+
+let saveTimer = null;
+let savePending = false;
+function storeSave(){
+  clearTimeout(saveTimer);
+  savePending = true;
+  status("저장 중", "busy");
+  saveTimer = setTimeout(doSave, 700);
+}
+async function doSave(){
+  clearTimeout(saveTimer);
+  if(!savePending) return;
+  savePending = false;
+  let okLocal = false;
+  if(canStore && storeOk){
+    try{
+      await backendSet(STORE_KEY, JSON.stringify(state));
+      okLocal = true;
+    }catch(err){ console.error(err); storeOk = false; }
+  }
+  const okFile = await fileWrite();
+  if(okLocal || okFile){
+    dirty = false;
+    status(okFile ? "자동 저장됨 · 파일 동기화" : "자동 저장됨", "ok");
+  }else{
+    savePending = true;
+    status("자동 저장 안 됨 — 파일로 내보내세요");
+  }
+}
+/* 탭을 닫거나 화면을 벗어날 때, 아직 저장 안 된 변경을 그 자리에서 저장합니다. */
+window.addEventListener("pagehide", () => { if(savePending && storeOk) doSave(); });
+document.addEventListener("visibilitychange", () => {
+  if(document.hidden && savePending && storeOk) doSave();
+});
+
+async function storeLoad(){
+  const parse = raw => {
+    try{ const d = JSON.parse(raw); return Array.isArray(d.topics) ? d : null; }
+    catch{ return null; }
+  };
+  try{
+    const raw = await backendGet(STORE_KEY);
+    let d = raw ? parse(raw) : null;
+    if(d){
+      // 세션을 시작할 때의 상태를 한 벌 남겨, 잘못 저장돼도 되돌릴 여지를 둡니다.
+      try{ await backendSet(BACKUP_KEY, raw); }catch(err){ console.error(err); }
+      return d;
+    }
+    if(raw !== null){
+      const b = await backendGet(BACKUP_KEY);
+      d = b ? parse(b) : null;
+      if(d){ flash("저장본이 손상되어 직전 백업을 불러왔습니다."); return d; }
+    }
+    return null;
+  }catch{
+    return null;
+  }
+}
+
+function markDirty(){
+  dirty = true;
+  if(storeOk || fileHandle) storeSave();
+  else status("저장 안 됨");
+}
+
+/* ─────────── 동기화 파일 (OneDrive 등) ───────────
+   OneDrive·구글드라이브처럼 자동 동기화되는 폴더 안의 JSON 파일에 저장을 연결하면,
+   같은 파일을 연결한 다른 컴퓨터와 내용이 오갑니다. 자료는 이 컴퓨터와
+   본인 클라우드 계정 사이에서만 오가고, 다른 서버로는 나가지 않습니다. */
+const canFS = !!(window.showSaveFilePicker && window.showOpenFilePicker && window.indexedDB);
+let fileHandle = null;     // 연결된 파일
+let pendingHandle = null;  // 권한을 다시 받아야 하는 파일
+let fileMod = 0;           // 우리가 마지막으로 확인한 파일 수정 시각
+
+function idbOpen(){
+  return new Promise((res, rej) => {
+    const r = indexedDB.open("workhub-fs", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("kv");
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function idbSet(k, v){
+  const d = await idbOpen();
+  return new Promise((res, rej) => {
+    const tx = d.transaction("kv", "readwrite");
+    tx.objectStore("kv").put(v, k);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+}
+async function idbGet(k){
+  const d = await idbOpen();
+  return new Promise((res, rej) => {
+    const q = d.transaction("kv").objectStore("kv").get(k);
+    q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error);
+  });
+}
+async function idbDel(k){
+  const d = await idbOpen();
+  return new Promise((res, rej) => {
+    const tx = d.transaction("kv", "readwrite");
+    tx.objectStore("kv").delete(k);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+}
+
+function paintSync(){
+  const b = $("#btnSync");
+  if(!b) return;
+  b.hidden = !canFS;
+  if(!canFS) return;
+  if(fileHandle){
+    b.textContent = "동기화: " + fileHandle.name;
+    b.title = "자동 저장이 이 파일과 연결되어 있습니다. 눌러서 바꾸거나 해제하세요.";
+  }else if(pendingHandle){
+    b.textContent = "동기화 다시 연결";
+    b.title = "눌러서 연결해 둔 파일의 사용 권한을 다시 허용하세요.";
+  }else{
+    b.textContent = "동기화 파일";
+    b.title = "OneDrive 등 동기화 폴더의 파일에 자동 저장을 연결합니다.";
+  }
+}
+
+/* 파일 쪽에만 있는 기록을 지금 자료에 더합니다. 겹치는 기록은 건너뜁니다. */
+function absorbState(inc){
+  const plan = buildMergePlan(inc);
+  const n = plan.reduce((a,p) => a + p.rows.filter(r => r.pick).length, 0);
+  if(n) applyMerge(plan);
+  return n;
+}
+
+/* 저장 직전에 파일이 다른 기기에서 먼저 바뀌었는지 확인하고,
+   바뀌었으면 그쪽 기록을 받아들인 뒤에 씁니다. */
+async function fileWrite(){
+  if(!fileHandle) return false;
+  try{
+    const f = await fileHandle.getFile();
+    if(fileMod && f.lastModified !== fileMod){
+      try{
+        const inc = normalizeState(await f.text());
+        if(inc){
+          const n = absorbState(inc);
+          if(n) flash(`다른 기기의 기록 ${n}건을 받아들였습니다.`);
+        }
+      }catch(err){ console.error(err); }
+    }
+    const w = await fileHandle.createWritable();
+    await w.write(JSON.stringify(state, null, 2));
+    await w.close();
+    fileMod = (await fileHandle.getFile()).lastModified;
+    return true;
+  }catch(err){
+    console.error(err);
+    pendingHandle = fileHandle; fileHandle = null;
+    paintSync();
+    flash("동기화 파일에 저장하지 못했습니다. 동기화 단추를 눌러 다시 연결하세요.");
+    return false;
+  }
+}
+
+/* 파일을 연결합니다. 파일에 내용이 있으면 먼저 읽어서 합칩니다. */
+async function connectHandle(handle){
+  fileHandle = handle; pendingHandle = null;
+  try{
+    const f = await handle.getFile();
+    const raw = (await f.text()).trim();
+    if(raw){
+      const inc = normalizeState(raw);
+      if(inc && inc.topics.length){
+        const hasData = state.topics.some(t => t.items.length || t.note);
+        if(!hasData){
+          // 이쪽이 비어 있으면 파일 내용을 그대로 씁니다.
+          state = inc;
+          if(!state.topics.some(t => t.id === state.activeId))
+            state.activeId = (state.topics[0] || {}).id || null;
+          render();
+        }else{
+          const n = absorbState(inc);
+          if(n) flash(`파일의 기록 ${n}건을 받아들였습니다.`);
+        }
+      }
+    }
+    fileMod = f.lastModified;
+  }catch(err){ console.error(err); }
+  paintSync();
+  markDirty();   // 합쳐진 상태를 파일과 브라우저 저장소 양쪽에 기록
+}
+
+function openSyncModal(){
+  const conn = !!fileHandle;
+  const v = modal("동기화 파일",
+    conn
+      ? `<p class="hint">지금 <b>${esc(fileHandle.name)}</b> 파일에 자동 저장하고 있습니다.<br><br>
+         이 파일이 OneDrive 같은 동기화 폴더 안에 있으면, 같은 파일을 연결한
+         다른 컴퓨터와 내용이 오갑니다. 자료는 본인 클라우드 계정 밖으로 나가지 않습니다.</p>`
+      : `<p class="hint">OneDrive·구글드라이브처럼 자동 동기화되는 폴더 안에 JSON 파일을 하나 두고
+         연결하면, 변경할 때마다 그 파일에 저장되어 다른 컴퓨터와 내용이 오갑니다.<br><br>
+         처음이면 <b>새 파일 만들기</b>로 동기화 폴더 안에 파일을 만들고,
+         다른 컴퓨터에서 만들어 둔 파일이 있으면 <b>기존 파일 열기</b>로 이어서 쓰세요.</p>`,
+    conn
+      ? `<button class="btn" data-off>연결 해제</button>
+         <button class="btn" data-open>다른 파일로 바꾸기</button>
+         <button class="btn primary" data-x>닫기</button>`
+      : `<button class="btn" data-x>취소</button>
+         <button class="btn" data-open>기존 파일 열기</button>
+         <button class="btn primary" data-new>새 파일 만들기</button>`);
+
+  v.querySelector("[data-x]").onclick = () => v.remove();
+  const fin = async h => {
+    try{ await idbSet("handle", h); }catch(err){ console.error(err); }
+    v.remove();
+    await connectHandle(h);
+    flash(`"${h.name}" 파일과 연결했습니다.`);
+  };
+  const on = (sel, fn) => { const b = v.querySelector(sel); if(b) b.onclick = fn; };
+  on("[data-new]", async () => {
+    try{
+      const h = await window.showSaveFilePicker({
+        suggestedName: "업무허브_동기화.json",
+        types: [{ description: "업무 관리 자료", accept: { "application/json": [".json"] } }]
+      });
+      await fin(h);
+    }catch(err){ if(err && err.name !== "AbortError") console.error(err); }
+  });
+  on("[data-open]", async () => {
+    try{
+      const picked = await window.showOpenFilePicker({
+        types: [{ description: "업무 관리 자료", accept: { "application/json": [".json"] } }]
+      });
+      const h = picked[0];
+      const p = await h.requestPermission({ mode: "readwrite" });
+      if(p !== "granted"){ alert("쓰기 권한이 없어 연결하지 못했습니다."); return; }
+      await fin(h);
+    }catch(err){ if(err && err.name !== "AbortError") console.error(err); }
+  });
+  on("[data-off]", async () => {
+    fileHandle = null; pendingHandle = null; fileMod = 0;
+    try{ await idbDel("handle"); }catch(err){ console.error(err); }
+    v.remove(); paintSync();
+    flash("동기화 연결을 해제했습니다. 자동 저장은 이 브라우저 안에서만 계속됩니다.");
+  });
+}
+const ALL = "__all";
+let merging = false;
+let flatView = false;   // 소주제를 풀고 전체를 시간순으로 볼지
+let todoView = false;   // "모든 주제"에서 미결 할일만 기한순으로 볼지
+let viewMode = "time";  // 주제 화면 보기: time(타임라인) | table(표) | board(칸반)
+const picked = new Set();
+
+/* ─────────── 되돌리기 ─────────── */
+const undoStack = [];
+function pushUndo(label){
+  try{ undoStack.push({ label, snap: JSON.stringify(state) }); }
+  catch(err){ console.error(err); return; }
+  if(undoStack.length > 30) undoStack.shift();
+  paintUndo();
+}
+function paintUndo(){
+  const b = $("#btnUndo");
+  if(!b) return;
+  const last = undoStack[undoStack.length - 1];
+  b.disabled = !last;
+  b.title = last ? `되돌리기: ${last.label}` : "되돌릴 것이 없습니다";
+}
+function undo(){
+  const u = undoStack.pop();
+  if(!u) return;
+  state = JSON.parse(u.snap);
+  merging = false; picked.clear();
+  if(!state.topics.some(t => t.id === state.activeId) && state.activeId !== ALL)
+    state.activeId = (state.topics[0] || {}).id || null;
+  markDirty(); render(); paintUndo();
+  flash(`되돌렸습니다 — ${u.label}`);
+}
+
+function activeTopic(){ return state.topics.find(t => t.id === state.activeId) || null; }
+function findOwner(itemId){
+  for(const t of state.topics){
+    const i = t.items.find(x => x.id === itemId);
+    if(i) return { t, i };
+  }
+  return null;
+}
+
+/* ─────────── 렌더 ─────────── */
+function overdue(t){
+  const d = today();
+  return t.items.filter(i => i.kind === "할일" && !i.done && i.due && i.due <= d).length;
+}
+function openTodos(t){ return t.items.filter(i => i.kind === "할일" && !i.done).length; }
+
+function topicBtnHTML(t, inSec){
+  const last = t.items.map(i => i.date).sort().pop();
+  const od = overdue(t), ot = openTodos(t);
+  const un = t.items.filter(i => !i.seen).length;
+  let meta = last ? `최근 ${last}` : "기록 없음";
+  if(un) meta += ` · 미확인 ${un}`;
+  if(ot) meta += ` · 미결 ${ot}`;
+  return `<button class="topic ${t.id===state.activeId?"on":""} ${un?"unread":""} ${inSec?"in-sec":""}" data-t="${t.id}">
+    <span class="nm">${t.icon?esc(t.icon)+" ":""}${esc(t.name)}</span>
+    <span class="meta">${esc(meta)}${od?` <span class="due">지연 ${od}</span>`:""}</span>
+  </button>`;
+}
+
+function renderTopics(){
+  const box = $("#topicList");
+  const totalOpen = state.topics.reduce((n,t) => n + openTodos(t), 0);
+  const totalUnseen = state.topics.reduce((n,t) => n + t.items.filter(i => !i.seen).length, 0);
+  const all = `<button class="topic all ${state.activeId===ALL?"on":""}" data-t="${ALL}">
+      <span class="nm">모든 주제</span>
+      <span class="meta">${state.topics.length}개${totalUnseen?` · 미확인 ${totalUnseen}`:""}${totalOpen?` · 미결 ${totalOpen}`:""}</span>
+    </button>`;
+  if(!state.topics.length){
+    box.innerHTML = '<p style="padding:0 14px;color:var(--ink-soft);font-size:13px">주제를 하나 만들고 시작하세요.</p>';
+    $("#tagList").innerHTML = "";
+    return;
+  }
+
+  // 상위 묶음별로 나눠 보여줍니다. 묶음 없는 주제가 먼저 나옵니다.
+  const secs = [];
+  const byName = new Map();
+  state.topics.forEach(t => {
+    const s = t.section || "";
+    if(!byName.has(s)){ const o = { name: s, topics: [] }; byName.set(s, o); secs.push(o); }
+    byName.get(s).topics.push(t);
+  });
+  secs.sort((a, b) => (a.name === "" ? -1 : b.name === "" ? 1 : 0));
+  const closed = new Set(state.closedSections || []);
+
+  box.innerHTML = all + secs.map(sec => {
+    if(!sec.name) return sec.topics.map(t => topicBtnHTML(t, false)).join("");
+    const un = sec.topics.reduce((n,t) => n + t.items.filter(i => !i.seen).length, 0);
+    const head = `<div class="sec-row">
+      <button class="sec-h" data-sec="${esc(sec.name)}">
+        <span class="arr">${closed.has(sec.name)?"▸":"▾"}</span>
+        <span class="sec-nm">${esc(sec.name)}</span>
+        <span class="cnt">${sec.topics.length}${un?` · 미확인 ${un}`:""}</span></button>
+      <button class="sec-x" data-smenu="${esc(sec.name)}" title="묶음 관리 — 순서·정렬·내보내기">⋯</button>
+    </div>`;
+    return head + (closed.has(sec.name) ? "" : sec.topics.map(t => topicBtnHTML(t, true)).join(""));
+  }).join("");
+
+  // 자주 쓰는 키워드(해시태그) 목록
+  const cnt = new Map();
+  state.topics.forEach(t => t.items.forEach(i =>
+    itemTags(i).forEach(w => cnt.set(w, (cnt.get(w) || 0) + 1))));
+  const top = [...cnt.entries()].sort((a,b) => b[1]-a[1]).slice(0, 15);
+  const bans = state.tagBans || [];
+  $("#tagList").innerHTML = (top.length || bans.length ? `
+    <div class="aside-head" style="padding-top:16px"><b>키워드</b></div>
+    <div class="tagcloud">${top.map(([w,n]) =>
+      `<button class="chip" data-qtag="${esc(w)}">#${esc(w)} ${n}</button>` +
+      `<button class="chip x" data-qtagdel="${esc(w)}" title="오인식된 키워드면 눌러서 숨기세요">×</button>`).join("")}</div>` : "") +
+    (bans.length ? `
+    <div class="aside-head" style="padding-top:12px"><b>숨긴 키워드</b></div>
+    <div class="tagcloud">${bans.map(w =>
+      `<button class="chip" data-qtagun="${esc(w)}" title="눌러서 복원">#${esc(w)} ↩</button>`).join("")}</div>` : "");
+}
+
+/* 메신저 대화처럼 제목이 본문 앞부분을 줄인 것뿐이면
+   같은 내용이 두 번 보이지 않게 본문 전체를 한 번만 보여줍니다.
+   제목이 "…"로 잘린 기록은 본문이 있으면 무조건 본문을 보여줘 잘림이 없게 합니다. */
+function entryTextHTML(i){
+  const title = String(i.title || "");
+  const head = title.replace(/…\s*$/, "").trim();
+  const clipped = /…\s*$/.test(title);
+  if(i.detail && (clipped || (head && normText(i.detail).includes(normText(head)))))
+    return `<div class="ttl body-only">${esc(i.detail)}</div>`;
+  return `<div class="ttl">${esc(title)}</div>` +
+         (i.detail ? `<div class="detail">${esc(i.detail)}</div>` : "");
+}
+
+function entryHTML(t, i){
+  const tags = [`<span class="tag kind">${esc(i.kind)}</span>`,
+                `<span class="tag ch-${esc(i.channel)}">${esc(i.channel)}</span>`];
+  const g = i.groupId ? (t.groups||[]).find(x => x.id === i.groupId) : null;
+  if(g) tags.push(`<span class="tag sub">${esc(g.name)}</span>`);
+  if(i.owner) tags.push(`<span class="tag">${esc(i.owner)}</span>`);
+  itemTags(i).forEach(w =>
+    tags.push(`<button class="tag hash" data-tag="${esc(w)}" title="이 키워드로 검색">#${esc(w)}</button>`));
+  if(i.kind === "할일" && i.due)
+    tags.push(`<span class="tag ${(!i.done && i.due <= today())?"due":""}">기한 ${esc(i.due)}</span>`);
+  return `<div class="entry c-${esc(i.channel)} ${i.done?"done":""} ${i.seen?"seen":""} ${picked.has(i.id)?"picked":""}" data-id="${i.id}">
+    <div class="date">${esc(i.date||"")}${i.time?`<span class="tm">${esc(i.time)}</span>`:""}</div>
+    <div class="dot"></div>
+    <div class="body">
+      <div class="tags">
+        ${merging?`<input type="checkbox" class="pick" data-pick="${i.id}" ${picked.has(i.id)?"checked":""} aria-label="묶을 항목">`:""}
+        ${tags.join("")}</div>
+      ${entryTextHTML(i)}
+      ${i.path?`<div class="path">${esc(i.path)}</div>`:""}
+      ${(i.comments||[]).length?`<div class="cmts">${i.comments.map(c =>
+        `<div class="cmt"><span class="cd">${esc(c.date)}</span><span>${esc(c.text)}</span>
+         <button class="cmt-x" data-cdel="${i.id}|${c.id}" title="경과 지우기">×</button></div>`).join("")}</div>`:""}
+      <div class="acts">
+        <button class="btn small ghost" data-seen="${i.id}">${i.seen?"확인 해제":"확인"}</button>
+        ${i.kind==="할일"?`<button class="btn small ghost" data-done="${i.id}">${i.done?"되돌리기":"완료 표시"}</button>`:""}
+        <button class="btn small ghost" data-cmt="${i.id}">경과</button>
+        <button class="btn small ghost" data-pin="${i.id}">${i.pinned?"고정 해제":"고정"}</button>
+        ${state.topics.length>1?`<button class="btn small ghost" data-move="${i.id}">옮기기</button>`:""}
+        <button class="btn small ghost" data-edit="${i.id}">수정</button>
+        <button class="btn small ghost" data-del="${i.id}">삭제</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function sortKey(i){ return (i.date||"") + "T" + (i.time||""); }
+
+/* 날짜 구분선: "2026-02-12 (목)" */
+function fmtDay(d){
+  if(!d) return "날짜 없음";
+  const dt = new Date(d + "T00:00:00");
+  return isNaN(dt) ? d : d + " (" + "일월화수목금토"[dt.getDay()] + ")";
+}
+
+/* 고정 기록을 맨 위에 모으고, 날짜가 바뀌는 곳마다 구분선을 넣습니다. */
+function timelineHTML(t, items){
+  const pins = items.filter(i => i.pinned);
+  const rest = items.filter(i => !i.pinned);
+  let html = "";
+  if(pins.length)
+    html += `<div class="dayline pin-h">📌 고정됨</div>` + pins.map(i => entryHTML(t, i)).join("");
+  let last = null;
+  rest.forEach(i => {
+    if(i.date !== last){
+      last = i.date;
+      html += `<div class="dayline">${esc(fmtDay(i.date))}</div>`;
+    }
+    html += entryHTML(t, i);
+  });
+  return html;
+}
+
+function visibleItems(t){
+  let items = t.items.slice();
+  if(filter.kind) items = items.filter(i => i.kind === filter.kind);
+  if(filter.channel) items = items.filter(i => i.channel === filter.channel);
+  if(filter.openOnly) items = items.filter(i => i.kind === "할일" && !i.done);
+  if(filter.unseenOnly) items = items.filter(i => !i.seen);
+  items.sort((a,b) => sortKey(b).localeCompare(sortKey(a)) || (b.seq||0)-(a.seq||0));
+  return items;
+}
+
+function actionRow(html){
+  return `<div class="actions">${html}</div>`;
+}
+
+/* ── 표 보기: Notion 데이터베이스처럼 한눈에 훑는 용도 ── */
+function tableHTML(t, items){
+  if(!items.length) return `<p class="empty">조건에 맞는 기록이 없습니다.</p>`;
+  return `<div class="tblwrap"><table class="tbl">
+    <thead><tr><th>날짜</th><th>유형</th><th>내용</th><th>담당</th><th>기한·상태</th><th></th></tr></thead>
+    <tbody>${items.map(i => {
+      const st = i.kind === "할일" ? (i.done ? "완료" : (i.doing ? "진행" : "대기")) : "";
+      return `<tr class="${i.seen?"seen":""}">
+        <td class="cd">${esc(i.date||"")}${i.time?`<br>${esc(i.time)}`:""}</td>
+        <td>${esc(i.kind)}</td>
+        <td>${i.pinned?"📌 ":""}${esc(i.title)}${i.path?`<div class="where">${esc(i.path)}</div>`:""}</td>
+        <td>${esc(i.owner||"")}</td>
+        <td class="cd">${esc(i.due||"")}${st?`<br>${esc(st)}`:""}</td>
+        <td><button class="btn small ghost" data-edit="${i.id}">수정</button></td>
+      </tr>`;
+    }).join("")}</tbody></table></div>`;
+}
+
+/* ── 할일 칸반: 대기 → 진행 → 완료. ◀▶ 로 옮깁니다 ── */
+function boardHTML(t){
+  const todos = t.items.filter(i => i.kind === "할일");
+  const cols = [
+    { k: "todo",  name: "대기", items: todos.filter(i => !i.done && !i.doing) },
+    { k: "doing", name: "진행", items: todos.filter(i => !i.done && i.doing) },
+    { k: "done",  name: "완료", items: todos.filter(i => i.done) }
+  ];
+  const d = today();
+  if(!todos.length) return `<p class="empty"><b>할일이 없습니다.</b>기록 추가에서 유형을 "할일"로 저장하면 여기에 나타납니다.</p>`;
+  return `<div class="board">${cols.map(c => `
+    <div class="bcol">
+      <div class="bcol-h">${c.name} <span>${c.items.length}</span></div>
+      ${c.items.map(i => `<div class="bcard">
+        <div>${esc(i.title)}</div>
+        ${i.owner || i.due ? `<div class="where">${esc(i.owner||"")}${
+          i.due ? ` · <span class="${!i.done && i.due <= d ? "due-red" : ""}">${esc(i.due)}까지</span>` : ""}</div>` : ""}
+        <div class="bacts">
+          ${c.k !== "todo" ? `<button class="btn small ghost" data-bmv="${i.id}|left" title="이전 단계로">◀</button>` : ""}
+          ${c.k !== "done" ? `<button class="btn small ghost" data-bmv="${i.id}|right" title="다음 단계로">▶</button>` : ""}
+          <span style="flex:1"></span>
+          <button class="btn small ghost" data-edit="${i.id}">수정</button>
+        </div>
+      </div>`).join("") || `<p class="bempty">없음</p>`}
+    </div>`).join("")}</div>`;
+}
+
+function sameFilter(f){
+  return filter.kind === (f.kind || null) && filter.channel === (f.channel || null)
+    && !!filter.openOnly === !!f.openOnly && !!filter.unseenOnly === !!f.unseenOnly;
+}
+
+function filterRow(extra){
+  const chip = (on, key, val, label) =>
+    `<button class="chip ${on?"on":""}" data-f="${key}" data-v="${val}">${label}</button>`;
+  const isDefault = !filter.kind && !filter.channel && !filter.openOnly && !filter.unseenOnly;
+  const saved = (state.savedViews || []).map(sv =>
+    `<button class="chip ${sameFilter(sv.f)?"on":""}" data-sfil="${sv.id}">${esc(sv.name)}</button>` +
+    `<button class="chip x" data-sfdel="${sv.id}" title="저장한 필터 지우기">×</button>`).join("");
+  return `<div class="filters">
+      ${chip(isDefault, "reset", "", "전체")}
+      ${KINDS.map(k => chip(filter.kind===k, "kind", k, k)).join("")}
+      <span style="color:var(--rule)">|</span>
+      ${CHANNELS.map(c => chip(filter.channel===c, "channel", c, c)).join("")}
+      ${chip(filter.openOnly, "open", "1", "미결만")}
+      ${chip(filter.unseenOnly, "unseen", "1", "미확인만")}
+      ${(state.savedViews||[]).length || !isDefault ? `<span style="color:var(--rule)">|</span>` : ""}
+      ${saved}
+      ${!isDefault ? `<button class="chip" data-sfsave title="지금 조합을 저장">+ 필터 저장</button>` : ""}
+      <span class="sp"></span>${extra}
+    </div>`;
+}
+
+function renderPanel(){
+  const p = $("#panel");
+
+  if(searching){
+    const q = searching.toLowerCase();
+    // "#키워드" 로 검색하면 해시태그가 달린 기록만 찾습니다. "#" 만 치면 태그 있는 것 전부.
+    const tagQ = q.startsWith("#") ? q.slice(1).trim() : null;
+    const hits = [];
+    state.topics.forEach(t => t.items.forEach(i => {
+      const tg = itemTags(i).map(x => x.toLowerCase());
+      if(tagQ !== null){
+        if(tg.length && (tagQ === "" || tg.some(x => x === tagQ || x.includes(tagQ))))
+          hits.push({t, i});
+      }else{
+        const hay = [i.title, i.detail, i.path, i.owner].concat(tg).join(" ").toLowerCase();
+        if(hay.includes(q) || t.name.toLowerCase().includes(q)) hits.push({t, i});
+      }
+    }));
+    p.innerHTML = `<div class="panel-head"><h2>${tagQ !== null ? `#${esc(tagQ || "전체")} 태그 ` : "검색 "}결과 ${hits.length}건</h2></div>
+      <p class="panel-note">항목을 누르면 해당 주제로 이동합니다.</p>` +
+      (hits.length ? hits.map(({t,i}) => `<div class="hit" data-go="${t.id}" data-item="${i.id}">
+        <div class="where">${esc(t.name)} · ${esc(i.date||"")} · ${esc(i.kind)} · ${esc(i.channel)}${
+          itemTags(i).length ? ` · ${itemTags(i).map(w => "#" + esc(w)).join(" ")}` : ""}</div>
+        <div>${esc(i.title)}</div>
+        ${i.path?`<div class="where">${esc(i.path)}</div>`:""}
+      </div>`).join("") : `<p class="empty">일치하는 기록이 없습니다.</p>`);
+    return;
+  }
+
+  /* 모든 주제 — 유형·경로·미결 조건을 걸고 주제별로 나눠 봅니다 */
+  if(state.activeId === ALL){
+    const allBtns = `
+        <button class="btn" id="pasteHere">대화 붙여넣기</button>
+        <button class="btn" id="txtHere">대화 파일 (.txt)</button>
+        <button class="btn" id="emlHere">메일 파일 (.eml)</button>
+        <span style="flex:1"></span>
+        <button class="btn ${todoView?"primary":""}" id="todoToggle">${todoView?"주제별로 보기":"할일 모아보기"}</button>`;
+
+    /* 할일 모아보기 — 모든 주제의 미결 할일을 기한이 가까운 순서로 */
+    if(todoView){
+      const rows = [];
+      state.topics.forEach(t => t.items.forEach(i => {
+        if(i.kind === "할일" && !i.done) rows.push({t, i});
+      }));
+      rows.sort((a,b) => (a.i.due||"9999-99-99").localeCompare(b.i.due||"9999-99-99")
+        || sortKey(a.i).localeCompare(sortKey(b.i)));
+      const d = today();
+      p.innerHTML = `
+        <div class="panel-head"><h2>모든 주제 — 미결 할일</h2></div>
+        <p class="panel-note">끝나지 않은 할일 ${rows.length}건을 기한이 가까운 순서로 모았습니다. 항목을 누르면 해당 주제로 이동합니다.</p>
+        <div class="stickybar">${actionRow(allBtns)}</div>
+        ${rows.length ? rows.map(({t,i}) => `<div class="hit" data-go="${t.id}" data-item="${i.id}">
+          <div class="where">${esc(t.name)}${i.owner?` · ${esc(i.owner)}`:""}</div>
+          <div>${esc(i.title)}</div>
+          <div class="where ${i.due && i.due <= d ? "due-red":""}">기한 ${esc(i.due||"없음")}${i.due && i.due <= d ? " — 지남":""}</div>
+          <div class="hit-acts"><button class="btn small ghost" data-done="${i.id}">완료 표시</button></div>
+        </div>`).join("") : `<p class="empty"><b>미결 할일이 없습니다.</b>모든 할일이 완료 상태입니다.</p>`}`;
+      return;
+    }
+
+    const groups = state.topics.map(t => ({ t, items: visibleItems(t) })).filter(g => g.items.length);
+    const total = groups.reduce((n,g) => n + g.items.length, 0);
+    p.innerHTML = `
+      <div class="panel-head"><h2>모든 주제</h2></div>
+      <p class="panel-note">조건에 맞는 기록을 주제별로 모았습니다. 지금 ${total}건.</p>
+      <div class="stickybar">
+      ${actionRow(allBtns)}
+      ${filterRow("")}
+      </div>
+      ${groups.length ? groups.map(g => `
+        <div class="group">
+          <div class="group-h" data-go="${g.t.id}"><b>${esc(g.t.name)}</b><span>${g.items.length}건</span></div>
+          <div class="timeline">${timelineHTML(g.t, g.items)}</div>
+        </div>`).join("") : `<p class="empty">조건에 맞는 기록이 없습니다.</p>`}`;
+    return;
+  }
+
+  const t = activeTopic();
+  if(!t){
+    p.innerHTML = `<div class="empty"><b>아직 주제가 없습니다.</b>
+      왼쪽에서 주제를 추가하세요. 하나의 주제 안에 공유폴더 자료, 주고받은 메일,
+      메신저 회의 내용을 함께 쌓아두면 시간순으로 한 줄에 정리됩니다.</div>`;
+    return;
+  }
+
+  const items = visibleItems(t);
+  const groups = flatView ? [] : (t.groups || []);
+  const bucket = new Map(groups.map(g => [g.id, []]));
+  const loose = [];
+  items.forEach(i => {
+    if(i.groupId && bucket.has(i.groupId)) bucket.get(i.groupId).push(i);
+    else loose.push(i);
+  });
+  // 같은 묶음 안에서의 위치 (순서 이동은 묶음 안에서만 움직입니다)
+  const sameSec = state.topics.filter(x => (x.section||"") === (t.section||""));
+  const sidx = sameSec.findIndex(x => x.id === t.id);
+
+  const subHTML = groups.map((g, gi) => {
+    const gi_items = bucket.get(g.id) || [];
+    return `<div class="sub ${g.open!==false?"open":""}">
+      <div class="sub-h">
+        <button class="sub-toggle" data-gtoggle="${g.id}" aria-label="펼치기">${g.open!==false?"▾":"▸"}</button>
+        <b>${esc(g.name)}</b><span class="cnt">${gi_items.length}건</span>
+        <span class="sp"></span>
+        <span class="ord">
+          <button class="btn small ghost" data-gmove="${g.id}" data-dir="-1" ${gi===0?"disabled":""}>↑</button>
+          <button class="btn small ghost" data-gmove="${g.id}" data-dir="1" ${gi===groups.length-1?"disabled":""}>↓</button>
+        </span>
+        <button class="btn small ghost" data-grename="${g.id}">이름 변경</button>
+        <button class="btn small ghost" data-gdel="${g.id}">묶음 해제</button>
+      </div>
+      ${g.open!==false?`<div class="sub-body"><div class="timeline">
+        ${gi_items.length ? timelineHTML(t, gi_items)
+          : `<p class="empty" style="padding:14px 0">조건에 맞는 기록이 없습니다.</p>`}
+      </div></div>`:""}
+    </div>`;
+  }).join("");
+
+  p.innerHTML = `
+    <div class="panel-head" style="flex-wrap:wrap">
+      <div>
+        ${t.section?`<div class="crumb">${esc(t.section)}</div>`:""}
+        <h2>${t.icon?esc(t.icon)+" ":""}${esc(t.name)}</h2>
+      </div>
+      <div class="toolbar" style="margin-left:auto">
+        <span class="ord">
+          <button class="btn small" data-tmove="-1" ${sidx<=0?"disabled":""} title="위로">↑</button>
+          <button class="btn small" data-tmove="1" ${sidx===sameSec.length-1?"disabled":""} title="아래로">↓</button>
+        </span>
+        <button class="btn small" id="iconTopic">아이콘</button>
+        <button class="btn small" id="secTopic">묶음</button>
+        ${t.section?`<button class="btn small" id="exportSec">묶음 내보내기</button>`:""}
+        <button class="btn small" id="exportTopic">주제 내보내기</button>
+        <button class="btn small" id="renameTopic">이름 변경</button>
+        <button class="btn small" id="delTopic">주제 삭제</button>
+      </div>
+    </div>
+    <div class="panel-note">
+      <textarea id="topicNote" rows="2" placeholder="이 주제의 현재 상태를 한두 줄로">${esc(t.note||"")}</textarea>
+    </div>
+    <div class="stickybar">
+    ${actionRow(`
+      <button class="btn primary" id="addItem">+ 기록 추가</button>
+      <button class="btn" id="pasteHere">대화 붙여넣기</button>
+      <button class="btn" id="txtHere">대화 파일 (.txt)</button>
+      <button class="btn" id="emlHere">메일 파일 (.eml)</button>
+      <span style="flex:1"></span>
+      <span class="ord">
+        <button class="btn small ${viewMode==="time"?"primary":""}" data-vm="time">타임라인</button>
+        <button class="btn small ${viewMode==="table"?"primary":""}" data-vm="table">표</button>
+        <button class="btn small ${viewMode==="board"?"primary":""}" data-vm="board">칸반</button>
+      </span>
+      ${viewMode==="time" && (t.groups||[]).length?`<button class="btn ${flatView?"primary":""}" id="flatToggle">${flatView?"소주제별로 보기":"시간순 전체 보기"}</button>`:""}
+      ${viewMode==="time"?`<button class="btn ${merging?"primary":""}" id="mergeMode">${merging?"선택 끝내기":"선택"}</button>`:""}`)}
+    ${viewMode==="board" ? "" : filterRow("")}
+    ${merging && viewMode==="time"?`<div class="mergebar">
+      <span>${picked.size}건 선택</span>
+      <span class="sp"></span>
+      <button class="btn small" id="mergeClear">선택 해제</button>
+      <button class="btn small" id="doSeen" ${picked.size<1?"disabled":""}>확인 표시</button>
+      <button class="btn small" id="doGroup" ${picked.size<1?"disabled":""}>소주제로 묶기</button>
+      <button class="btn small primary" id="doMerge" ${picked.size<2?"disabled":""}>한 기록으로 합치기</button>
+    </div>`:""}
+    </div>
+    ${viewMode==="table" ? tableHTML(t, items)
+    : viewMode==="board" ? boardHTML(t)
+    : `${subHTML}
+    ${groups.length && loose.length ? `<p class="loose-h">소주제 없는 기록</p>` : ""}
+    <div class="timeline">
+      ${loose.length ? timelineHTML(t, loose)
+        : (groups.length ? "" : `<p class="empty">조건에 맞는 기록이 없습니다.</p>`)}
+    </div>`}`;
+}
+
+function fitHead(){
+  const h = document.querySelector("header");
+  if(h) document.documentElement.style.setProperty("--headh", h.offsetHeight + "px");
+}
+window.addEventListener("resize", fitHead);
+
+function render(){ renderTopics(); renderPanel(); paintUndo(); fitHead(); }
+
+/* 모바일에서는 목록 화면(list)과 내용 화면(panel)을 오갑니다.
+   데스크톱에서는 CSS 가 적용되지 않아 아무 영향이 없습니다. */
+function setMNav(v){
+  document.body.dataset.mnav = v;
+  if(v === "list") window.scrollTo({ top: 0 });
+}
+
+/* 결과 패널이 화면에 바로 보이도록 위로 데려갑니다.
+   (키워드·검색처럼 다른 곳을 누르고 결과는 패널에 뜨는 동작에서 씁니다) */
+function showPanel(){
+  setMNav("panel");
+  const h = document.querySelector("header");
+  const top = $("#panel").getBoundingClientRect().top + window.scrollY
+              - ((h ? h.offsetHeight : 0) + 6);
+  window.scrollTo({ top: Math.max(0, top) });
+}
+
+/* ─────────── 모달 ─────────── */
+function modal(title, contentHTML, footHTML){
+  const v = document.createElement("div");
+  v.className = "veil";
+  v.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}"><h3>${esc(title)}</h3>
+    <div class="content">${contentHTML}</div><div class="foot">${footHTML}</div></div>`;
+
+  // 배경 클릭·Escape 로 닫을 때, v.guard 가 참을 돌려주면 한 번 물어봅니다.
+  const tryClose = () => {
+    if(typeof v.guard === "function" && v.guard()
+       && !confirm("작성 중인 내용이 사라집니다. 닫을까요?")) return;
+    document.removeEventListener("keydown", onKey);
+    v.remove();
+  };
+  const onKey = e => {
+    if(!document.body.contains(v)){ document.removeEventListener("keydown", onKey); return; }
+    const veils = document.querySelectorAll(".veil");
+    if(veils[veils.length - 1] !== v) return;     // 위에 다른 창이 떠 있으면 그쪽이 받습니다
+    if(e.key === "Escape"){ tryClose(); return; }
+    if(e.key === "Tab"){                          // 초점이 창 밖으로 나가지 않게
+      const els = [...v.querySelectorAll("button,input,select,textarea,a[href]")]
+        .filter(x => !x.disabled && x.offsetParent !== null);
+      if(!els.length) return;
+      const first = els[0], last = els[els.length - 1];
+      if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+      else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+    }
+  };
+  document.addEventListener("keydown", onKey);
+  v.addEventListener("mousedown", e => { if(e.target === v) tryClose(); });
+  document.body.appendChild(v);
+  const f = v.querySelector("input,select,textarea"); if(f) f.focus();
+  return v;
+}
+
+/* 새 기록을 만들 때 고를 수 있는 틀 */
+const TEMPLATES = [
+  { name: "회의 내용", kind: "논의", channel: "메신저",
+    detail: "참석: \n논의: \n결정: \n다음 할 일: " },
+  { name: "자료 등록", kind: "자료", channel: "공유폴더", detail: "" },
+  { name: "할일", kind: "할일", channel: "기타", detail: "" }
+];
+
+function itemForm(item, topic){
+  const it = item || {kind:"자료", channel:"공유폴더", date:today(), time:"", title:"", detail:"", path:"", owner:"", due:""};
+  const groups = (topic && topic.groups) || [];
+  return `
+  ${item ? "" : `<div class="field"><label for="f_tpl">템플릿</label><select id="f_tpl">
+    <option value="">직접 입력</option>
+    ${TEMPLATES.map((tp,i)=>`<option value="${i}">${tp.name}</option>`).join("")}
+  </select></div>`}
+  <div class="row4">
+    <div class="field"><label for="f_kind">유형</label><select id="f_kind">
+      ${KINDS.map(k=>`<option ${it.kind===k?"selected":""}>${k}</option>`).join("")}</select></div>
+    <div class="field"><label for="f_ch">어디서 왔나</label><select id="f_ch">
+      ${CHANNELS.map(c=>`<option ${it.channel===c?"selected":""}>${c}</option>`).join("")}</select></div>
+    <div class="field"><label for="f_date">날짜</label><input id="f_date" type="date" value="${esc(it.date)}"></div>
+    <div class="field"><label for="f_time">시각</label><input id="f_time" type="time" value="${esc(it.time||"")}"></div>
+  </div>
+  <div class="field"><label for="f_title">내용 한 줄</label>
+    <input id="f_title" value="${esc(it.title)}"></div>
+  <div class="field"><label for="f_detail">메모</label>
+    <textarea id="f_detail" rows="3" placeholder="회의에서 나온 배경, 이유, 참석자 등">${esc(it.detail)}</textarea></div>
+  <div class="field"><label for="f_path">파일 위치 (공유폴더 경로·메일 제목 등 찾아갈 단서)</label>
+    <input id="f_path" value="${esc(it.path)}"></div>
+  <div class="row">
+    <div class="field"><label for="f_owner">담당</label><input id="f_owner" value="${esc(it.owner)}"></div>
+    <div class="field"><label for="f_due">기한 (할일일 때)</label><input id="f_due" type="date" value="${esc(it.due)}"></div>
+  </div>
+  <div class="field"><label for="f_tags">키워드 (해시태그)</label>
+    <input id="f_tags" value="${esc((it.tags||[]).map(w => "#" + w).join(" "))}"
+      placeholder="#보고서 #일정 — 띄어쓰기로 구분, 본문에 #키워드 라고 써도 자동 인식"></div>
+  ${groups.length?`<div class="field"><label for="f_group">소주제</label><select id="f_group">
+    <option value="">없음</option>
+    ${groups.map(g=>`<option value="${g.id}" ${it.groupId===g.id?"selected":""}>${esc(g.name)}</option>`).join("")}
+  </select></div>`:""}`;
+}
+
+/* 내용 한 줄이 길면 줄여서 보여 주고, 원문 전체는 메모에 남깁니다. */
+const TITLE_MAX = 90;
+const clip = s => s.length > TITLE_MAX ? s.slice(0, TITLE_MAX - 3) + "…" : s;
+function fitTitle(d){
+  const full = d.title;
+  if(full.length > TITLE_MAX){
+    const keep = d.detail && d.detail.trim() && d.detail.trim() !== full.trim();
+    d.detail = keep ? full + "\n\n" + d.detail : full;
+    d.title = full.slice(0, TITLE_MAX - 3) + "…";
+  }
+  return d;
+}
+
+function readItemForm(){
+  const g = $("#f_group");
+  return fitTitle({
+    groupId: g ? (g.value || null) : undefined,
+    kind: $("#f_kind").value, channel: $("#f_ch").value, date: $("#f_date").value,
+    time: $("#f_time").value,
+    title: $("#f_title").value.trim(), detail: $("#f_detail").value.trim(),
+    path: $("#f_path").value.trim(), owner: $("#f_owner").value.trim(), due: $("#f_due").value,
+    tags: ($("#f_tags") ? $("#f_tags").value.split(/[\s,]+/) : [])
+      .map(s => s.replace(/^#+/, "").trim()).filter(Boolean)
+  });
+}
+
+/* 기록 하나에서 실제 내용 줄만 뽑습니다.
+   제목이 메모의 앞부분을 줄인 것일 때가 많아, 그런 경우 메모만 씁니다. */
+function itemLines(i){
+  const head = String(i.title || "").replace(/…\s*$/, "").trim();
+  const body = String(i.detail || "").trim();
+  let text;
+  if(!body) text = head;
+  else if(!head) text = body;
+  else text = normText(body).includes(normText(head)) ? body : head + "\n" + body;
+  return text.split("\n").map(x => x.trim()).filter(Boolean);
+}
+
+/* 나뉘어 들어간 기록을 시간순으로 이어 붙여 한 건으로 만듭니다.
+   소주제 안에서 합치면 그 소주제에 그대로 남고,
+   발화자가 바뀔 때마다 이름을 앞에 세워 누가 한 말인지 보이게 합니다. */
+function mergePicked(t){
+  const sel = t.items.filter(i => picked.has(i.id))
+    .sort((a,b) => sortKey(a).localeCompare(sortKey(b)) || (a.seq||0)-(b.seq||0));
+  if(sel.length < 2) return;
+  pushUndo("기록 합치기");
+
+  const owners = [];
+  sel.forEach(i => {
+    const o = (i.owner || "").trim();
+    if(o && !owners.includes(o)) owners.push(o);
+  });
+  const many = owners.length > 1;
+
+  const blocks = [];
+  let lastOwner = null;
+  sel.forEach(i => {
+    const lines = itemLines(i);
+    if(!lines.length) return;
+    const own = (i.owner || "").trim();
+    const named = /^[^:\n]{1,20}\s*:/.test(lines[0]);   // 이미 이름이 붙어 있으면 그대로
+    if(many && own && own !== lastOwner && !named) lines[0] = own + ": " + lines[0];
+    lastOwner = own || lastOwner;
+    blocks.push(lines.join("\n"));
+  });
+
+  // 같은 줄이 잇달아 나오면 하나만 남깁니다.
+  const seen = [];
+  const clean = [];
+  blocks.forEach(b => {
+    const key = normText(b);
+    if(seen.includes(key)) return;
+    seen.push(key);
+    clean.push(b);
+  });
+
+  const detail0 = clean.join(many ? "\n\n" : "\n");
+  const flat = clean.join(" ").replace(/\s+/g, " ").trim();
+  const paths = [...new Set(sel.map(i => i.path).filter(Boolean))];
+
+  let kind = "논의";
+  if(paths.length || FILE_RE.test(flat)) kind = "자료";
+  else if(DECIDE_RE.test(flat)) kind = "결정";
+  else if(TODO_RE.test(flat)) kind = "할일";
+
+  let detail = detail0;
+  if(paths.length > 1) detail += "\n\n첨부: " + paths.join(" / ");
+
+  const merged = {
+    id: uid(), seq: sel[0].seq || Date.now(),
+    date: sel[0].date, time: sel[0].time || "",
+    kind, channel: sel[0].channel,
+    owner: owners.join(", "),
+    groupId: (sel.find(i => i.groupId) || {}).groupId || null,
+    title: clip(flat),
+    detail,
+    path: paths[0] || "",
+    due: (sel.find(i => i.due) || {}).due || "",
+    done: sel.every(i => i.done),
+    seen: sel.every(i => i.seen),
+    pinned: sel.some(i => i.pinned),
+    doing: sel.some(i => i.doing && !i.done),
+    tags: [...new Set(sel.reduce((a, i) => a.concat(i.tags || []), []))],
+    comments: sel.reduce((a, i) => a.concat(i.comments || []), [])
+  };
+
+  t.items = t.items.filter(i => !picked.has(i.id));
+  t.items.push(merged);
+  picked.clear();
+  markDirty(); render();
+  flash(`${sel.length}건을 하나로 묶었습니다.` + (many ? ` 발화자 ${owners.length}명을 표시했습니다.` : ""));
+}
+
+/* 선택한 기록을 소주제로 묶습니다. 기존 소주제에 넣거나 새로 만듭니다. */
+function openGroupModal(t){
+  const groups = t.groups || (t.groups = []);
+  const v = modal("소주제로 묶기",
+    `<p class="hint">선택한 ${picked.size}건을 하나의 소주제 아래로 모읍니다.</p>
+     ${groups.length?`<div class="field"><label for="g_sel">기존 소주제</label>
+       <select id="g_sel"><option value="">새로 만들기</option>
+       ${groups.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join("")}</select></div>`:""}
+     <div class="field"><label for="g_name">새 소주제 제목</label><input id="g_name"></div>`,
+    `<button class="btn" data-x>취소</button><button class="btn primary" data-ok>묶기</button>`);
+
+  const sel = v.querySelector("#g_sel");
+  const nameIn = v.querySelector("#g_name");
+  if(sel) sel.onchange = () => { nameIn.disabled = !!sel.value; if(sel.value) nameIn.value = ""; };
+
+  v.querySelector("[data-x]").onclick = () => v.remove();
+  v.querySelector("[data-ok]").onclick = () => {
+    let gid = sel ? sel.value : "";
+    if(!gid){
+      const n = nameIn.value.trim();
+      if(!n){ nameIn.focus(); return; }
+      const g = { id: uid(), name: n, open: true };
+      groups.push(g); gid = g.id;
+    }
+    pushUndo("소주제로 묶기");
+    t.items.forEach(i => { if(picked.has(i.id)) i.groupId = gid; });
+    picked.clear();
+    v.remove(); markDirty(); render();
+  };
+}
+
+function openMoveModal(from, item){
+  const others = state.topics.filter(t => t.id !== from.id);
+  if(!others.length){ alert("옮길 다른 주제가 없습니다."); return; }
+  const guessId = matchTopic(item.title + " " + item.path + " " + item.detail,
+    topicIndex(allOwners(), from.section || ""));
+  const target = (guessId && guessId !== from.id) ? guessId : null;
+
+  const v = modal("다른 주제로 옮기기",
+    `<div class="moving">
+       <span class="tag kind">${esc(item.kind)}</span> ${esc(item.date||"")}<br>${esc(item.title)}
+     </div>
+     <div class="field"><label for="mv_t">옮길 주제 (현재 ${esc(from.name)})</label>
+       <select id="mv_t">${others.map(t =>
+         `<option value="${t.id}" ${t.id===target?"selected":""}>${esc(t.name)}</option>`).join("")}</select></div>`,
+    `<button class="btn" data-x>취소</button><button class="btn primary" data-ok>옮기기</button>`);
+
+  v.querySelector("[data-x]").onclick = () => v.remove();
+  v.querySelector("[data-ok]").onclick = () => {
+    const to = state.topics.find(t => t.id === v.querySelector("#mv_t").value);
+    if(!to) return;
+    pushUndo("다른 주제로 옮기기");
+    const gname = item.groupId
+      ? ((from.groups||[]).find(g => g.id === item.groupId) || {}).name : "";
+    from.items = from.items.filter(x => x.id !== item.id);
+    if(gname){
+      to.groups = to.groups || [];
+      const g = to.groups.find(x => normText(x.name) === normText(gname));
+      item.groupId = g ? g.id : null;
+    }else item.groupId = null;
+    to.items.push(item);
+    v.remove(); markDirty(); render();
+    flash(`${to.name}(으)로 옮겼습니다.`);
+  };
+}
+
+function openItemModal(existing, ownerTopic){
+  const owner = ownerTopic || activeTopic();
+  const v = modal(existing ? "기록 수정" : "기록 추가", itemForm(existing, owner),
+    `<button class="btn" data-x>취소</button><button class="btn primary" data-ok>저장</button>`);
+  v.querySelector("[data-x]").onclick = () => v.remove();
+  const tpl = v.querySelector("#f_tpl");
+  if(tpl) tpl.onchange = () => {
+    const tp = TEMPLATES[+tpl.value];
+    if(!tp) return;
+    v.querySelector("#f_kind").value = tp.kind;
+    v.querySelector("#f_ch").value = tp.channel;
+    if(tp.detail) v.querySelector("#f_detail").value = tp.detail;
+    v.querySelector("#f_title").focus();
+  };
+  v.querySelector("[data-ok]").onclick = () => {
+    const d = readItemForm();
+    if(!d.title){ $("#f_title").focus(); return; }
+    const t = owner;
+    pushUndo(existing ? "기록 수정" : "기록 추가");
+    if(existing) Object.assign(existing, d);
+    else{
+      if(!t){ alert("먼저 주제를 선택하세요."); return; }
+      t.items.push(Object.assign({id:uid(), done:false, seq:Date.now()}, d));
+    }
+    v.remove(); markDirty(); render();
+  };
+}
+
+/* ─────────── 메신저/메일 붙여넣기 파서 ─────────── */
+const FILE_RE = /[^\s\\\/:*?"<>|]+\.(hwpx?|pdf|docx?|xlsx?|pptx?|zip|jpg|png|txt|csv)\b/i;
+const DATE_LINE = /(20\d{2})\s*[.\-\/년]\s*(\d{1,2})\s*[.\-\/월]\s*(\d{1,2})/;
+const MD_LINE = /^(\d{1,2})\s*월\s*(\d{1,2})\s*일/;   // 연도 없는 날짜 구분 줄
+const DECIDE_RE = /(하기로|결정|확정|합의|반영하기로|채택)/;
+const TODO_RE = /(까지|마감|기한|제출|요청드|보내주|회신|부탁드|준비해)/;
+const NOISE_RE = /^(사진|이모티콘|동영상|파일:|Emoticons?|Photos?|Videos?|Voice message|\d+명|.*(들어왔습니다|나갔습니다|초대했습니다|내보냈습니다)\.?)$/i;
+
+/* 아이폰 카카오톡 내보내기의 영어 날짜 형식:
+   "Sep 4, 2026 at 12:06 PM, 이름 : 내용" */
+const MONTHS = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+const EN_LINE = /^([a-z]{3,9})\.?\s+(\d{1,2}),?\s*(20\d{2})(?:\s+at\s+|,\s*|\s+)(\d{1,2}:\d{2})\s*(am|pm)?\s*,\s*([^:]{1,20}?)\s*:\s*(.+)$/i;
+const EN_DATE = /^([a-z]{3,9})\.?\s+(\d{1,2}),?\s*(20\d{2})\b/i;
+function enMonth(s){ return MONTHS[String(s).slice(0,3).toLowerCase()] || null; }
+
+function pad(n){ return String(n).padStart(2,"0"); }
+
+/* 12:06 + PM → 12:06,  1:06 + PM → 13:06 */
+function enTo24(hm, ap){
+  const parts = String(hm).split(":");
+  let hh = parseInt(parts[0], 10);
+  const A = String(ap || "").toUpperCase();
+  if(A === "PM" && hh < 12) hh += 12;
+  if(A === "AM" && hh === 12) hh = 0;
+  return pad(hh) + ":" + parts[1];
+}
+
+/* 오후 2:15 → 14:15,  2:15 PM → 14:15 */
+function to24(s){
+  const m = String(s||"").match(/(오전|오후)?\s*(\d{1,2}):(\d{2})\s*([AaPp][Mm])?/);
+  if(!m) return "";
+  let h = parseInt(m[2], 10);
+  const pm = m[1] === "오후" || /^pm$/i.test(m[4] || "");
+  const am = m[1] === "오전" || /^am$/i.test(m[4] || "");
+  if(pm && h < 12) h += 12;
+  if(am && h === 12) h = 0;
+  return pad(h) + ":" + m[3];
+}
+
+function parsePaste(text){
+  const lines = text.split(/\r?\n/);
+  let cur = today();
+  let sawDate = false;   // 날짜를 한 번이라도 읽었는지 (못 읽으면 나중에 알려줍니다)
+
+  // 1단계: 줄마다 발화자 머리표가 있는지 살핍니다. null 은 끊김(빈 줄·날짜 줄)입니다.
+  const rows = [];
+  let sawHeader = false;
+  for(const raw of lines){
+    let line = raw.trim();
+    if(!line){ rows.push(null); continue; }
+
+    // 카카오톡 내보내기 파일의 머리말 줄은 건너뜁니다.
+    if(/(님|명)과(의)?\s*카카오톡 대화$/.test(line) || /^저장한 날짜\s*:/.test(line)){ rows.push(null); continue; }
+
+    // 아이폰 카카오톡: "Sep 4, 2026 at 12:06 PM, 이름 : 내용"
+    const em = line.match(EN_LINE);
+    if(em && enMonth(em[1])){
+      cur = `${em[3]}-${pad(enMonth(em[1]))}-${pad(em[2])}`;
+      sawDate = true; sawHeader = true;
+      const body = em[7].trim();
+      if(!body || NOISE_RE.test(body)){ rows.push(null); continue; }
+      rows.push({ date: cur, time: enTo24(em[4], em[5]), who: em[6].trim(), body, header: true });
+      continue;
+    }
+    // 영어 날짜 구분 줄: "Sep 4, 2026", "Thursday, February 12, 2026",
+    // "--------------- February 12, 2026 ---------------" 처럼 꾸민 것도 인정합니다.
+    // 이 줄 아래의 메시지는 모두 이 날짜를 물려받습니다.
+    const deco = line.replace(/^[^0-9A-Za-z가-힣]+/, "").replace(/[^0-9A-Za-z가-힣]+$/, "");
+    const wd = deco.replace(/^(?:sun|mon|tues?|wednes?|thurs?|fri|satur?)day,?\s*/i, "");
+    const ed = wd.match(EN_DATE);
+    if(ed && enMonth(ed[1]) && wd.replace(EN_DATE, "").trim().length < 3){
+      cur = `${ed[3]}-${pad(enMonth(ed[1]))}-${pad(ed[2])}`;
+      sawDate = true;
+      rows.push(null); continue;
+    }
+
+    const dm = line.match(DATE_LINE);
+    // 날짜 구분 줄로만 인정합니다. 문장 가운데 스치듯 나온 날짜가
+    // 이후 모든 줄의 날짜를 바꿔버리지 않도록, 날짜 앞에 글자·숫자가 있으면 무시합니다.
+    if(dm && /^[^0-9A-Za-z가-힣]*$/.test(line.slice(0, line.indexOf(dm[0])))){
+      cur = `${dm[1]}-${pad(dm[2])}-${pad(dm[3])}`;
+      sawDate = true;
+      const rest = line.replace(DATE_LINE, "").replace(/^[\s.,\-요일월화수목금토일()]+/, "").trim();
+      if(rest.length < 2){ rows.push(null); continue; }
+      line = rest;
+    }
+    // 연도 없는 날짜 구분 줄: "2월 12일 목요일"
+    const md = line.match(MD_LINE);
+    if(md && /^[\s,.\-()요일월화수목금토]*$/.test(line.replace(MD_LINE, ""))){
+      const y = new Date().getFullYear();
+      let d8 = `${y}-${pad(md[1])}-${pad(md[2])}`;
+      if(d8 > today()) d8 = (y - 1) + d8.slice(4);   // 미래가 되면 지난해로
+      cur = d8; sawDate = true;
+      rows.push(null); continue;
+    }
+
+    // [이름] [오후 2:15] 내용 / [이름] 내용 / 오후 2:15, 이름 : 내용 /
+    // 이름 (14:05): 내용 / 이름 : [2:55 PM] 내용 / 이름: 내용
+    // 시각은 "오후 2:15", "14:05", "2:55 PM" 모두 받습니다.
+    let who = "", body = line, time = "", header = false, m;
+    if((m = line.match(/^\[([^\]]{1,20})\]\s*\[((?:오전|오후)?\s*\d{1,2}:\d{2}(?:\s*[AaPp][Mm])?)\]\s*(.+)$/)))
+      { who = m[1]; time = m[2]; body = m[3]; header = true; }
+    else if((m = line.match(/^\[([^\]]{1,20})\]\s*(.+)$/)))
+      { who = m[1]; body = m[2]; header = true; }
+    else if((m = line.match(/^((?:오전|오후)?\s*\d{1,2}:\d{2}(?:\s*[AaPp][Mm])?)\s*[,:]?\s*([^:]{1,20})\s*:\s*(.+)$/)))
+      { time = m[1]; who = m[2]; body = m[3]; header = true; }
+    else if((m = line.match(/^([^:]{1,20})\s*\(((?:오전|오후)?\s*\d{1,2}:\d{2}(?:\s*[AaPp][Mm])?)\)\s*:?\s*(.+)$/)))
+      { who = m[1]; time = m[2]; body = m[3]; header = true; }
+    else if((m = line.match(/^([^:\[\]]{1,20}?)\s*:\s*\[((?:오전|오후)?\s*\d{1,2}:\d{2}(?:\s*[AaPp][Mm])?)\]\s*(.*)$/)))
+      { who = m[1]; time = m[2]; body = m[3]; header = true; }
+    else if((m = line.match(/^([가-힣A-Za-z][^:\s][^:]{0,12})\s*:\s*(.+)$/)))
+      { who = m[1]; body = m[2]; header = true; }
+
+    who = who.trim(); body = body.trim();
+    if(header) sawHeader = true;
+    if(!body || NOISE_RE.test(body)){ rows.push(null); continue; }
+
+    rows.push({ date: cur, time: to24(time), who, body, header });
+  }
+
+  // 2단계: 머리표 없는 줄은 바로 앞 발언에 이어 붙이고,
+  //        같은 사람이 잇달아 말한 것도 하나의 발언으로 묶습니다.
+  //        머리표가 하나도 없는 글(메일 본문 등)은 예전처럼 줄 단위로 둡니다.
+  const blocks = [];
+  let prev = null;
+  for(const r of rows){
+    if(!r){ prev = null; continue; }
+    const sameSpeaker = prev && r.header && r.who
+      && prev.owner === r.who && prev.date === r.date;
+    if(sameSpeaker || (prev && !r.header && sawHeader)){
+      prev.lines.push(r.body);
+    }else{
+      prev = { date: r.date, time: r.time, owner: r.who, lines: [r.body] };
+      blocks.push(prev);
+    }
+  }
+
+  // 3단계: 묶인 발언 전체를 보고 유형과 파일명을 판단합니다.
+  const cands = blocks.reduce((out, b) => {
+    const lines = joinLines(b.lines);
+    const flat = lines.join(" ").trim();
+    if(flat.length < 4) return out;
+
+    const fm = flat.match(FILE_RE);
+    let kind = "논의";
+    if(fm) kind = "자료";
+    else if(DECIDE_RE.test(flat)) kind = "결정";
+    else if(TODO_RE.test(flat)) kind = "할일";
+
+    const full = lines.join("\n");
+    const long = flat.length > TITLE_MAX;
+    out.push({
+      pick: kind !== "논의",
+      date: b.date,
+      time: b.time || "",
+      kind,
+      owner: b.owner,
+      title: clip(flat),
+      detail: (lines.length > 1 || long) ? full : "",
+      path: fm ? fm[0] : ""
+    });
+    return out;
+  }, []);
+  cands.sawDate = sawDate;
+  return cands;
+}
+
+/* 엔터로 잘려 들어온 한 문장을 다시 한 줄로 붙입니다.
+   앞 줄이 문장으로 끝난 경우(마침표류, ~다/~요 같은 종결, ㅋㅋ 등)에만 줄을 나누고,
+   목록 기호나 주소로 시작하는 줄은 붙이지 않고 그대로 둡니다. */
+const SENT_END = /([.?!…~]|[다요죠까네음함임됨]|[ㅋㅎㅠㅜ]{2,})[)"'\]』」>]*$/;
+function joinLines(lines){
+  const out = [];
+  lines.forEach(l => {
+    const s = String(l).trim();
+    if(!s) return;
+    const prev = out[out.length - 1];
+    const standalone = /^[-•·*>]\s/.test(s) || /^[\d①-⑳]+[.)]\s/.test(s) || /^https?:\/\//i.test(s);
+    if(prev && !SENT_END.test(prev) && !standalone) out[out.length - 1] = prev + " " + s;
+    else out.push(s);
+  });
+  return out;
+}
+
+/* 카카오톡 내보내기는 늘 처음부터 전체가 나오므로, 다시 붙여넣을 때
+   이미 담아 둔 기록과 겹치는 줄을 미리 걸러 둡니다.
+   - 내용까지 같은 줄: "이미 있음"으로 표시하고 선택을 뺍니다.
+   - 마지막으로 담은 메신저 기록보다 앞선 시점의 줄: "이전 범위"로 표시하고 선택을 뺍니다.
+   필요하면 "모두 선택"으로 다시 넣을 수 있습니다. */
+function markOldCandidates(cands, dupOnly){
+  const keys = new Set();
+  let lastMsg = "";
+  state.topics.forEach(t => t.items.forEach(i => {
+    keys.add(itemKey(i));
+    if(i.channel === "메신저"){
+      const k = sortKey(i);
+      if(k > lastMsg) lastMsg = k;
+    }
+  }));
+  let dups = 0, olds = 0;
+  cands.forEach(c => {
+    if(keys.has((c.date||"") + "|" + normText(c.title))){ c.dup = true; c.pick = false; dups++; }
+  });
+  // "이전 범위" 걸러내기는 내용이 같은 줄이 함께 발견됐을 때만 —
+  // 즉 같은 방을 다시 내보낸 것이 분명할 때만 작동합니다.
+  // 처음 들여오는 옛날 대화까지 잘못 걸러내지 않기 위해서입니다.
+  if(!dupOnly && dups && lastMsg){
+    cands.forEach(c => {
+      if(!c.dup && sortKey(c) <= lastMsg){ c.old = true; c.pick = false; olds++; }
+    });
+  }
+  const parts = [];
+  if(dups) parts.push(`이미 담은 것과 같은 줄 ${dups}건`);
+  if(olds) parts.push(`마지막으로 담은 시점(${lastMsg.replace("T", " ").trim()}) 이전 줄 ${olds}건`);
+  return parts.length ? parts.join(", ") + "은 선택에서 빼 두었습니다." : "";
+}
+
+/* 대화 속 문장이 어느 주제 이야기인지 추정합니다.
+   "3강", "제3강", "3차시" 처럼 강 번호가 나오면 숫자로 읽어 해당 주제에 넣습니다.
+   ("11강" 안의 "1강"에 걸리지 않도록 낱말이 아니라 숫자로 비교합니다.)
+   번호가 없으면 주제 이름의 낱말로 찾고, 그래도 없으면 앞 줄의 주제를 이어받습니다. */
+const LESSON_RE = /제?\s*(\d{1,2})\s*(?:강|차시|회차)(?!의)/;
+const LESSON_RANGE_RE = /(\d{1,2})\s*[~\-–—]\s*\d{1,2}\s*(?:강|차시|회차)(?!의)/;
+const COMMON_RE = /(공통|전체|공지|일반|기타)/;
+
+function lessonNo(s){
+  const r = String(s).match(LESSON_RANGE_RE);
+  if(r) return parseInt(r[1], 10);
+  const m = String(s).match(LESSON_RE);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+/* 지금까지 기록에 등장한 담당자·발화자 이름들 */
+function allOwners(){
+  const s = new Set();
+  state.topics.forEach(t => t.items.forEach(i => {
+    String(i.owner || "").split(/[,/]/).forEach(x => {
+      const o = x.trim();
+      if(o) s.add(o);
+    });
+  }));
+  return s;
+}
+
+function isOwnerWord(w, ownerSet){
+  for(const o of ownerSet){
+    if(o === w || o.includes(w) || w.includes(o)) return true;
+  }
+  return false;
+}
+
+/* 사람 이름은 주제 단서로 쓰지 않습니다. 어떤 사람이 말했거나 언급됐다는
+   이유로 그 사람 이름이 붙은 주제로 분류되지 않게 하기 위해서입니다. */
+function topicKeywords(name, ownerSet){
+  return name.split(/[\s·,\-—()\[\]/]+/)
+    .map(w => w.replace(/[을를이가은는의에서와과로]$/, ""))
+    .filter(w => w.length >= 2 && !LESSON_RE.test(w))
+    .filter(w => !(ownerSet && ownerSet.size && isOwnerWord(w, ownerSet)));
+}
+
+/* 주제 찾기 순서: 강 번호 → 공통 표현 → 주제 이름의 낱말.
+   "1강 과정 소개" 처럼 번호와 제목이 섞인 이름이면 둘 다로 찾습니다. */
+function topicIndex(ownerSet, prefSection){
+  const lessons = new Map();      // 강 번호 → 주제 (지금 보고 있는 묶음 우선)
+  const lessonsAny = new Map();   // 강 번호 → 주제 (묶음 무관)
+  let commonId = null;
+  const plain = [];               // 이름 낱말로 찾을 주제
+  const pref = prefSection || "";
+  state.topics.forEach(t => {
+    const n = lessonNo(t.name);
+    if(n !== null){
+      if(!lessonsAny.has(n)) lessonsAny.set(n, t.id);
+      // 같은 "1강"이 여러 묶음에 있으면, 지금 보는 묶음의 것을 먼저 잡습니다.
+      if((t.section || "") === pref && !lessons.has(n)) lessons.set(n, t.id);
+    }
+    if(commonId === null && COMMON_RE.test(t.name)) commonId = t.id;
+    // "2강(홍길동/김아무)" 처럼 괄호에 담당자 이름이 적힌 주제는 괄호 속을 낱말 단서에서 뺍니다.
+    const base = n !== null ? t.name.replace(/\([^)]*\)/g, " ") : t.name;
+    const words = topicKeywords(base, ownerSet);
+    if(words.length) plain.push({ id: t.id, words });
+  });
+  return { lessons, lessonsAny, commonId, plain };
+}
+
+function matchTopic(hay, idx){
+  const n = lessonNo(hay);
+  if(n !== null){
+    if(idx.lessons.has(n)) return idx.lessons.get(n);
+    if(idx.lessonsAny.has(n)) return idx.lessonsAny.get(n);
+  }
+  if(idx.commonId && COMMON_RE.test(hay)) return idx.commonId;
+  const low = hay.toLowerCase();
+  const p = idx.plain.find(k => k.words.some(w => low.includes(w.toLowerCase())));
+  return p ? p.id : null;
+}
+
+/* 번호가 매겨진 주제는 날짜 흐름대로 이어지는 경우가 많으므로,
+   "3강"처럼 명확한 단서가 있는 대화를 먼저 확정하고
+   단서 없는 인접 대화는 앞뒤의 그 주제를 이어받게 합니다. */
+function guessTopics(cands, fallbackId){
+  const owners = allOwners();
+  cands.forEach(c => {
+    const o = String(c.owner || "").trim();
+    if(o) owners.add(o);
+  });
+  const fb = state.topics.find(x => x.id === fallbackId);
+  const idx = topicIndex(owners, fb ? fb.section : "");
+
+  // 1차: 본문에 명확한 단서가 있는 대화만 찾습니다. (발화자 이름은 보지 않습니다)
+  cands.forEach(c => {
+    const hit = matchTopic(c.title + " " + c.detail, idx);
+    c.guessed = !!hit;
+    c.topicId = hit || null;
+  });
+  // 2차: 단서가 없는 대화는 바로 앞 대화의 주제를 이어받습니다.
+  let carry = null;
+  cands.forEach(c => {
+    if(c.topicId) carry = c.topicId;
+    else if(carry) c.topicId = carry;
+  });
+  // 3차: 첫 단서보다 앞에 있는 대화는 그 첫 단서의 주제를 따릅니다.
+  let next = null;
+  for(let i = cands.length - 1; i >= 0; i--){
+    if(cands[i].topicId) next = cands[i].topicId;
+    else if(next) cands[i].topicId = next;
+  }
+  // 그래도 정해지지 않으면 기본 주제로 둡니다.
+  cands.forEach(c => { if(!c.topicId) c.topicId = fallbackId; });
+}
+
+/* ─────────── 메일(.eml) 읽기 ─────────── */
+function bytesToLatin1(buf){
+  const u = new Uint8Array(buf); let s = "";
+  for(let i = 0; i < u.length; i += 8192) s += String.fromCharCode.apply(null, u.subarray(i, i+8192));
+  return s;
+}
+function latin1ToBytes(s){
+  const u = new Uint8Array(s.length);
+  for(let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i) & 0xff;
+  return u;
+}
+function decodeBytes(bytes, charset){
+  try{ return new TextDecoder(charset || "utf-8").decode(bytes); }
+  catch{ return new TextDecoder("utf-8").decode(bytes); }
+}
+function decodeQP(s){
+  return s.replace(/=\r?\n/g, "").replace(/=([0-9A-Fa-f]{2})/g, (m,h) => String.fromCharCode(parseInt(h,16)));
+}
+/* 라틴1로 읽힌 문자열이 사실은 UTF-8이면 다시 풀어 줍니다. */
+function maybeUtf8(s){
+  if(!/[\u0080-\u00ff]/.test(s)) return s;
+  try{ return new TextDecoder("utf-8", {fatal:true}).decode(latin1ToBytes(s)); }
+  catch{ return s; }
+}
+/* =?UTF-8?B?...?= 형태의 머리글 해독 */
+function decodeWords(s){
+  const out = String(s||"").replace(/\?=\s+=\?/g, "?==?")
+    .replace(/=\?([^?]+)\?([BbQq])\?([^?]*)\?=/g, (m, cs, enc, txt) => {
+      try{
+        const raw = enc.toUpperCase() === "B"
+          ? atob(txt.replace(/\s/g, ""))
+          : decodeQP(txt.replace(/_/g, " "));
+        return decodeBytes(latin1ToBytes(raw), cs);
+      }catch{ return m; }
+    });
+  return maybeUtf8(out);
+}
+function headerMap(block){
+  const H = {};
+  block.replace(/\r?\n[ \t]+/g, " ").split(/\r?\n/).forEach(l => {
+    const m = l.match(/^([A-Za-z\-]+):\s*(.*)$/);
+    if(m && !H[m[1].toLowerCase()]) H[m[1].toLowerCase()] = m[2];
+  });
+  return H;
+}
+function pickFilename(v){
+  if(!v) return "";
+  let m = v.match(/filename\*\s*=\s*[^']*''([^;\r\n]+)/i);
+  if(m){ try{ return decodeURIComponent(m[1]); }catch{ return m[1]; } }
+  m = v.match(/(?:filename|name)\s*=\s*"([^"]+)"/i) || v.match(/(?:filename|name)\s*=\s*([^;\r\n]+)/i);
+  return m ? m[1].trim() : "";
+}
+function walkPart(raw, out){
+  const at = raw.search(/\r?\n\r?\n/);
+  const head = at < 0 ? raw : raw.slice(0, at);
+  const body = at < 0 ? "" : raw.slice(at).replace(/^\r?\n\r?\n/, "");
+  const H = headerMap(head);
+  const ct = H["content-type"] || "text/plain";
+  const enc = (H["content-transfer-encoding"] || "7bit").toLowerCase();
+  const fname = pickFilename(H["content-disposition"]) || pickFilename(ct);
+
+  const bm = ct.match(/boundary\s*=\s*"?([^";\r\n]+)"?/i);
+  if(/^\s*multipart\//i.test(ct) && bm){
+    const b = bm[1].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const parts = body.split(new RegExp("--" + b + "(?:--)?\\r?\\n?"));
+    parts.slice(1).forEach(pp => { if(pp.trim()) walkPart(pp, out); });
+    return;
+  }
+  if(fname && !/^\s*text\/(plain|html)/i.test(ct)){ out.files.push(decodeWords(fname)); return; }
+  if(fname && /attachment/i.test(H["content-disposition"]||"")){ out.files.push(decodeWords(fname)); return; }
+
+  let text = body;
+  if(enc === "base64"){ try{ text = atob(body.replace(/\s/g, "")); }catch{} }
+  else if(enc === "quoted-printable") text = decodeQP(body);
+  const cs = (ct.match(/charset\s*=\s*"?([\w\-]+)"?/i) || [])[1];
+  text = decodeBytes(latin1ToBytes(text), cs).replace(/\r\n/g, "\n").trim();
+
+  if(/^\s*text\/plain/i.test(ct)){ if(!out.text) out.text = text; }
+  else if(/^\s*text\/html/i.test(ct)){
+    if(!out.html) out.html = text.replace(/<style[\s\S]*?<\/style>/gi, "")
+      .replace(/<br\s*\/?>/gi, "\n").replace(/<\/p>/gi, "\n")
+      .replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\n{3,}/g, "\n\n").trim();
+  }
+}
+
+function emlToCandidate(raw){
+  const at = raw.search(/\r?\n\r?\n/);
+  const H = headerMap(at < 0 ? raw : raw.slice(0, at));
+  const out = { text: "", html: "", files: [] };
+  walkPart(raw, out);
+
+  const subject = decodeWords(H["subject"] || "").trim();
+  const fromRaw = decodeWords(H["from"] || "").trim();
+  const owner = (fromRaw.match(/^\s*"?([^"<]+?)"?\s*</) || [])[1]
+    || (fromRaw.match(/([^\s<>@]+)@/) || [])[1] || fromRaw;
+
+  let date = today(), time = "";
+  if(H["date"]){
+    const d = new Date(H["date"]);
+    if(!isNaN(d)){
+      date = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+      time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+  }
+
+  const bodyText = (out.text || out.html || "").split(/\n-{2,}\s*Original Message|^보낸 사람:/m)[0].trim();
+  const flat = (subject + " " + bodyText).replace(/\s+/g, " ");
+  let kind = "논의";
+  if(out.files.length || FILE_RE.test(flat)) kind = "자료";
+  else if(DECIDE_RE.test(flat)) kind = "결정";
+  else if(TODO_RE.test(flat)) kind = "할일";
+
+  const detail = [
+    bodyText.slice(0, 20000),
+    out.files.length ? "첨부: " + out.files.join(", ") : ""
+  ].filter(Boolean).join("\n\n");
+
+  return {
+    pick: true, date, time, kind, owner: owner.trim(),
+    title: subject || clip(bodyText.split("\n")[0] || "") || "(제목 없음)",
+    detail,
+    path: out.files.length ? out.files[0] : (subject ? "메일 제목: " + subject : "")
+  };
+}
+
+function openEmlModal(files){
+  if(!state.topics.length){ alert("먼저 주제를 하나 만들어 주세요."); return; }
+  const fallbackId = (state.activeId && state.activeId !== ALL) ? state.activeId : state.topics[0].id;
+
+  const v = modal("메일 파일 읽기",
+    `<p class="hint">읽는 중입니다…</p><div id="candWrap"></div>`,
+    `<button class="btn" data-x>취소</button>
+     <button class="btn primary" data-ok disabled>선택 항목 담기</button>`);
+  const okBtn = v.querySelector("[data-ok]");
+  v.querySelector("[data-x]").onclick = () => v.remove();
+
+  const cands = [];
+  (async () => {
+    for(const f of Array.from(files)){
+      try{ cands.push(emlToCandidate(bytesToLatin1(await readBytes(f)))); }
+      catch(err){ console.error(f.name, err); }
+    }
+    done();
+  })();
+
+  function done(){
+    if(!cands.length){
+      v.querySelector(".hint").textContent = "읽어낼 내용을 찾지 못했습니다.";
+      return;
+    }
+    cands.sort((a,b) => sortKey(a).localeCompare(sortKey(b)));
+    const notice = markOldCandidates(cands, true);   // 메일은 내용이 같은 것만 걸러냅니다
+    guessTopics(cands, fallbackId);
+    v.querySelector(".hint").textContent =
+      `메일 ${cands.length}건을 읽었습니다. 주제와 유형을 확인하고 담아 주세요.`;
+    mountCands(v, cands, fallbackId, okBtn, "메일", notice);
+  }
+}
+
+/* 붙여넣기와 메일 읽기가 함께 쓰는 후보 목록입니다.
+   각 줄마다 담을지 여부, 유형, 어느 주제로 보낼지를 고를 수 있습니다. */
+function mountCands(v, cands, fallbackId, okBtn, channel, notice){
+  const topicOptions = sel => state.topics
+    .map(t => `<option value="${t.id}" ${t.id===sel?"selected":""}>${esc(t.name)}</option>`).join("");
+
+  function paint(){
+    v.querySelector("#candWrap").innerHTML = `
+      ${notice ? `<p class="hint">${esc(notice)}</p>` : ""}
+      <div class="bulk">
+        <button class="btn small" data-all="1">모두 선택</button>
+        <button class="btn small" data-all="0">모두 해제</button>
+        <span class="bulk-sp"></span>
+        <label for="bulkTopic">선택한 줄을</label>
+        <select id="bulkTopic">${topicOptions(fallbackId)}<option value="__new">+ 새 주제 만들기</option></select>
+        <button class="btn small" data-apply>이 주제로</button>
+      </div>
+      <div class="cands">` + [...cands.keys()].reverse().map(idx => {
+        const c = cands[idx];   // 화면은 최신 대화가 위로 오게 보여줍니다
+        return `
+        <div class="cand">
+          <input type="checkbox" data-i="${idx}" ${c.pick?"checked":""} aria-label="담기">
+          <span class="cd">${esc(c.date)}${c.time?`<br>${esc(c.time)}`:""}</span>
+          <span class="ct">${esc(c.owner?c.owner+" · ":"")}${esc(c.detail || c.title)}${
+            c.dup ? ' <span class="mstat dup">이미 있음</span>'
+            : c.old ? ' <span class="mstat old">이전 범위</span>' : ""}</span>
+          <select data-k="${idx}">${KINDS.map(k=>`<option ${c.kind===k?"selected":""}>${k}</option>`).join("")}</select>
+          <select data-t="${idx}" class="${c.guessed?"guessed":""}">${topicOptions(c.topicId)}</select>
+        </div>`;
+      }).join("") + `</div>
+      <p class="hint" id="candTally"></p>`;
+    tally();
+  }
+
+  /* 다시 그릴 때 스크롤 위치와 일괄 지정칸 선택을 보존합니다. */
+  function repaint(){
+    const box = v.querySelector(".cands");
+    const st = box ? box.scrollTop : 0;
+    const bulk = v.querySelector("#bulkTopic");
+    const bv = bulk ? bulk.value : null;
+    paint();
+    const nb = v.querySelector(".cands");
+    if(nb) nb.scrollTop = st;
+    const nbulk = v.querySelector("#bulkTopic");
+    if(bv && nbulk && [...nbulk.options].some(o => o.value === bv)) nbulk.value = bv;
+  }
+
+  /* 주제를 하나 고치면, "1강"처럼 명확한 단서가 없고(guessed 아님)
+     손으로 바꾼 적 없는(manual 아님) 인접 대화들이 앞뒤로 함께 바뀝니다. */
+  function spreadTopic(i0){
+    const id = cands[i0].topicId;
+    let n = 0;
+    for(let i = i0 + 1; i < cands.length; i++){
+      if(cands[i].guessed || cands[i].manual) break;
+      if(cands[i].topicId !== id){ cands[i].topicId = id; n++; }
+    }
+    for(let i = i0 - 1; i >= 0; i--){
+      if(cands[i].guessed || cands[i].manual) break;
+      if(cands[i].topicId !== id){ cands[i].topicId = id; n++; }
+    }
+    return n;
+  }
+
+  function tally(){
+    const on = [...v.querySelectorAll(".cand input[type=checkbox]")].filter(cb => cb.checked);
+    const byTopic = {};
+    on.forEach(cb => {
+      const id = v.querySelector(`select[data-t="${cb.dataset.i}"]`).value;
+      byTopic[id] = (byTopic[id] || 0) + 1;
+    });
+    const parts = Object.entries(byTopic).map(([id, n]) => {
+      const t = state.topics.find(x => x.id === id);
+      return `${t ? t.name : "?"} ${n}건`;
+    });
+    v.querySelector("#candTally").textContent =
+      `${cands.length}건 중 ${on.length}건 선택` + (parts.length ? ` — ${parts.join(", ")}` : "");
+    okBtn.disabled = on.length === 0;
+  }
+
+  v.addEventListener("change", e => {
+    if(e.target.matches(".cand input[type=checkbox]")){
+      cands[+e.target.dataset.i].pick = e.target.checked; tally();
+    }
+    if(e.target.matches("select[data-t]")){
+      const i = +e.target.dataset.t;
+      cands[i].topicId = e.target.value;
+      cands[i].manual = true;
+      cands[i].guessed = false;
+      e.target.classList.remove("guessed");
+      const n = spreadTopic(i);
+      if(n){ repaint(); flash(`인접한 ${n}건도 같은 주제로 바꿨습니다.`); }
+      else tally();
+    }
+    if(e.target.matches("select[data-k]")) cands[+e.target.dataset.k].kind = e.target.value;
+    if(e.target.id === "bulkTopic" && e.target.value === "__new"){
+      const n = prompt("새 주제 이름");
+      if(n && n.trim()){
+        const t = {id:uid(), name:n.trim(), note:"", items:[], groups:[]};
+        state.topics.push(t); markDirty(); renderTopics();
+        paint();
+        v.querySelector("#bulkTopic").value = t.id;
+      }else{
+        e.target.value = fallbackId;
+      }
+    }
+  });
+
+  v.addEventListener("click", e => {
+    const all = e.target.closest("[data-all]");
+    if(all){
+      const on = all.dataset.all === "1";
+      v.querySelectorAll(".cand input[type=checkbox]").forEach(cb => {
+        cb.checked = on; cands[+cb.dataset.i].pick = on;
+      });
+      tally(); return;
+    }
+    if(e.target.closest("[data-apply]")){
+      const id = v.querySelector("#bulkTopic").value;
+      if(id === "__new") return;
+      v.querySelectorAll(".cand input[type=checkbox]").forEach(cb => {
+        if(!cb.checked) return;
+        const sel = v.querySelector(`select[data-t="${cb.dataset.i}"]`);
+        sel.value = id; sel.classList.remove("guessed");
+        cands[+cb.dataset.i].topicId = id;
+        cands[+cb.dataset.i].manual = true;
+        cands[+cb.dataset.i].guessed = false;
+      });
+      tally();
+    }
+  });
+
+  okBtn.onclick = () => {
+    let n = 0; const touched = new Set();
+    cands.forEach((c, i) => {
+      if(!c.pick) return;
+      const t = state.topics.find(x => x.id === c.topicId);
+      if(!t) return;
+      if(n === 0) pushUndo("기록 담기");
+      t.items.push(fitTitle({
+        id: uid(), seq: Date.now()+i, kind: c.kind, channel,
+        date: c.date, time: c.time || "",
+        title: c.title, detail: c.detail || "", path: c.path || "",
+        owner: c.owner || "", due: "", done: false
+      }));
+      n++; touched.add(t.name);
+    });
+    v.remove(); markDirty(); render();
+    if(n) flash(`${n}건을 ${[...touched].join(", ")}에 담았습니다.`);
+  };
+
+  paint();
+}
+
+/* 카카오톡 "대화 내보내기"로 저장한 .txt 파일을 읽어 들입니다.
+   붙여넣기와 같은 파서를 쓰므로 중복 걸러내기·주제 추정도 똑같이 됩니다. */
+function openTxtModal(files){
+  if(!state.topics.length){ alert("먼저 주제를 하나 만들어 주세요."); return; }
+  const fallbackId = (state.activeId && state.activeId !== ALL) ? state.activeId : state.topics[0].id;
+
+  const v = modal("대화 파일 읽기",
+    `<p class="hint">읽는 중입니다…</p><div id="candWrap"></div>`,
+    `<button class="btn" data-x>취소</button>
+     <button class="btn primary" data-ok disabled>선택 항목 담기</button>`);
+  const okBtn = v.querySelector("[data-ok]");
+  v.querySelector("[data-x]").onclick = () => v.remove();
+
+  (async () => {
+    let cands = [], anyDate = false;
+    for(const f of Array.from(files)){
+      try{
+        const part = parsePaste(await readText(f));
+        anyDate = anyDate || !!part.sawDate;
+        cands = cands.concat(part);
+      }
+      catch(err){ console.error(f.name, err); }
+    }
+    if(!cands.length){
+      v.querySelector(".hint").textContent =
+        "읽어낼 대화를 찾지 못했습니다. 카카오톡 대화 내보내기 .txt 파일인지 확인해 주세요.";
+      return;
+    }
+    cands.sort((a,b) => sortKey(a).localeCompare(sortKey(b)));
+    let notice = markOldCandidates(cands);
+    if(!anyDate)
+      notice = "대화에서 날짜를 인식하지 못해 모두 오늘 날짜로 표시했습니다. " + notice;
+    guessTopics(cands, fallbackId);
+    v.querySelector(".hint").textContent =
+      `대화 ${cands.length}건을 읽었습니다. 주제와 유형을 확인하고 담아 주세요.`;
+    mountCands(v, cands, fallbackId, okBtn, "메신저", notice);
+  })();
+}
+
+function openPasteModal(){
+  if(!state.topics.length){ alert("먼저 주제를 하나 만들어 주세요."); return; }
+  const fallbackId = (state.activeId && state.activeId !== ALL) ? state.activeId : state.topics[0].id;
+
+  const v = modal("대화 붙여넣기",
+    `<div class="field"><label for="pasteBox">메신저 대화 내보내기 결과나 메일 본문을 그대로 붙여넣으세요</label>
+      <textarea id="pasteBox" rows="9"></textarea></div>
+     <p class="hint">자동 분류와 주제 추정은 짐작일 뿐입니다. 담을 것만 고르고 유형과 주제를 고쳐 주세요.</p>
+     <div id="candWrap"></div>`,
+    `<button class="btn" data-x>취소</button>
+     <button class="btn" data-scan>훑어보기</button>
+     <button class="btn primary" data-ok disabled>선택 항목 담기</button>`);
+
+  // 붙여넣은 내용이 있으면 배경 클릭·Escape 로 닫기 전에 한 번 물어봅니다.
+  v.guard = () => {
+    const box = v.querySelector("#pasteBox");
+    return !!box && box.value.trim().length > 0;
+  };
+  const okBtn = v.querySelector("[data-ok]");
+  v.querySelector("[data-x]").onclick = () => v.remove();
+
+  v.querySelector("[data-scan]").onclick = () => {
+    const cands = parsePaste(v.querySelector("#pasteBox").value);
+    if(!cands.length){
+      v.querySelector("#candWrap").innerHTML =
+        `<p class="hint">읽어낼 만한 줄을 찾지 못했습니다. 형식이 특이하면 직접 기록을 추가하세요.</p>`;
+      okBtn.disabled = true; return;
+    }
+    let notice = markOldCandidates(cands);
+    if(!cands.sawDate)
+      notice = "대화에서 날짜를 인식하지 못해 모두 오늘 날짜로 표시했습니다. " + notice;
+    guessTopics(cands, fallbackId);
+    mountCands(v, cands, fallbackId, okBtn, "메신저", notice);
+  };
+}
+
+
+/* ─────────── 인쇄 · PDF ───────────
+   인쇄용 보고서를 만들어 브라우저 인쇄 창을 엽니다.
+   인쇄 대상에서 "PDF로 저장"을 고르면 그대로 PDF 파일이 됩니다. */
+function ptable(head, rows){
+  return `<table><thead><tr>${head.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>
+    ${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+}
+
+function topicPrintHTML(t, full){
+  const P = [`<h2>${esc(t.name)}</h2>`];
+  if(t.note) P.push(`<p class="pnote">${esc(t.note)}</p>`);
+  const d = today();
+  let any = false;
+
+  const open = t.items.filter(i => i.kind === "할일" && !i.done)
+    .sort((a,b) => (a.due||"9999").localeCompare(b.due||"9999"));
+  if(open.length){
+    any = true;
+    P.push(`<h3>미결 할일 ${open.length}건</h3>`, ptable(["기한","내용","담당"],
+      open.map(i => [
+        esc(i.due||"—") + (i.due && i.due <= d ? " (지남)" : ""),
+        esc(i.title), esc(i.owner||"")
+      ])));
+  }
+
+  const dec = t.items.filter(i => i.kind === "결정")
+    .sort((a,b) => (a.date||"").localeCompare(b.date||""));
+  if(dec.length){
+    any = true;
+    P.push(`<h3>결정사항</h3>`, ptable(["날짜","내용"],
+      dec.map(i => [esc(i.date||""), esc(i.title)])));
+  }
+
+  const mat = t.items.filter(i => i.kind === "자료")
+    .sort((a,b) => (a.date||"").localeCompare(b.date||""));
+  if(mat.length){
+    any = true;
+    P.push(`<h3>자료</h3>`, ptable(["날짜","자료명","위치","출처"],
+      mat.map(i => [esc(i.date||""), esc(i.title), esc(i.path||""), esc(i.channel)])));
+  }
+
+  if(full){
+    const items = t.items.slice()
+      .sort((a,b) => sortKey(a).localeCompare(sortKey(b)) || (a.seq||0)-(b.seq||0));
+    if(items.length){
+      any = true;
+      P.push(`<h3>전체 기록 (시간순)</h3>`, ptable(["날짜","유형","출처","내용","담당·기한"],
+        items.map(i => {
+          const g = i.groupId ? ((t.groups||[]).find(x => x.id === i.groupId) || {}).name : "";
+          const clipped = /…\s*$/.test(i.title || "");
+          let body = (g ? `<b>[${esc(g)}]</b> ` : "") + (clipped && i.detail ? "" : esc(i.title));
+          if(i.detail && (clipped || normText(i.detail) !== normText(i.title)))
+            body += `<div class="pd">${esc(i.detail)}</div>`;
+          if(i.path) body += `<div class="pd">→ ${esc(i.path)}</div>`;
+        const tg = itemTags(i);
+        if(tg.length) body += `<div class="pd">${tg.map(w => "#" + esc(w)).join(" ")}</div>`;
+        (i.comments || []).forEach(c => {
+          body += `<div class="pd">↪ ${esc(c.date)} ${esc(c.text)}</div>`;
+        });
+          const who = [i.owner, i.due ? `${i.due}까지` : "",
+            i.kind === "할일" ? (i.done ? "완료" : "미결") : ""].filter(Boolean).join(" · ");
+          return [esc(i.date||"") + (i.time ? `<br>${esc(i.time)}` : ""),
+                  esc(i.kind), esc(i.channel), body, esc(who)];
+        })));
+    }
+  }
+
+  if(!any) P.push(`<p class="pnote">인쇄할 기록이 없습니다.</p>`);
+  return `<div class="pblock">${P.join("")}</div>`;
+}
+
+function doPrint(list, full, title){
+  let area = $("#printArea");
+  if(!area){
+    area = document.createElement("div");
+    area.id = "printArea";
+    document.body.appendChild(area);
+  }
+  area.innerHTML = `<h1>${esc(title)}</h1>
+    <p class="pdate">${today()} 기준 · 업무 관리 도구</p>` +
+    list.map(t => topicPrintHTML(t, full)).join("");
+  window.print();
+}
+
+function openPrintModal(){
+  if(!state.topics.length){ alert("인쇄할 주제가 없습니다."); return; }
+  const t = activeTopic();
+  const v = modal("인쇄 · PDF 만들기",
+    `<div class="field"><label>범위</label>
+       ${t ? `<label class="pr-opt"><input type="radio" name="pr_scope" value="cur" checked> 지금 보는 주제만 — ${esc(t.name)}</label>` : ""}
+       <label class="pr-opt"><input type="radio" name="pr_scope" value="all" ${t?"":"checked"}> 모든 주제</label></div>
+     <div class="field"><label>내용</label>
+       <label class="pr-opt"><input type="radio" name="pr_full" value="sum" checked> 요약 — 미결 할일 · 결정사항 · 자료</label>
+       <label class="pr-opt"><input type="radio" name="pr_full" value="full"> 전체 기록까지 모두 (시간순)</label></div>
+     <p class="hint">인쇄 창이 열리면 대상(프린터)을 <b>"PDF로 저장"</b>으로 고르세요. 그대로 PDF 파일이 만들어집니다.</p>`,
+    `<button class="btn" data-x>취소</button><button class="btn primary" data-ok>인쇄 창 열기</button>`);
+  v.querySelector("[data-x]").onclick = () => v.remove();
+  v.querySelector("[data-ok]").onclick = () => {
+    const scope = (v.querySelector("input[name=pr_scope]:checked") || {}).value || "all";
+    const full = (v.querySelector("input[name=pr_full]:checked") || {}).value === "full";
+    const list = (scope === "cur" && t) ? [t]
+      : state.topics.filter(x => x.items.length || x.note);
+    if(!list.length){ alert("인쇄할 내용이 없습니다."); return; }
+    v.remove();
+    doPrint(list, full, (scope === "cur" && t) ? `${t.name} — 업무 현황` : "전체 업무 현황");
+  };
+}
+
+function flash(msg){
+  const d = document.createElement("div");
+  d.textContent = msg;
+  d.style.cssText = "position:fixed;left:50%;bottom:26px;transform:translateX(-50%);"+
+    "background:var(--ink);color:var(--on-ink);padding:9px 16px;border-radius:3px;z-index:20;font-size:13px";
+  document.body.appendChild(d);
+  setTimeout(() => d.remove(), 2600);
+}
+
+/* ─────────── 파일 합치기 ─────────── */
+function normText(s){
+  return String(s||"").toLowerCase().replace(/\s+/g, "")
+    .replace(/[.,·…"'’“”()\[\]{}<>~!?:;\-_/\\]/g, "").slice(0, 60);
+}
+function itemKey(i){ return (i.date||"") + "|" + normText(i.title); }
+
+/* 들어온 자료를 우리 자료와 견주어, 겹치는 기록에 표시를 답니다. */
+function buildMergePlan(inc){
+  const myIds = new Set();
+  state.topics.forEach(t => t.items.forEach(i => myIds.add(i.id)));
+
+  return (inc.topics || []).map(it => {
+    const gname = new Map(((it.groups)||[]).map(g => [g.id, g.name]));
+    const mine = state.topics.find(t => normText(t.name) === normText(it.name)) || null;
+    const seen = new Set();
+    if(mine) mine.items.forEach(i => seen.add(itemKey(i)));
+
+    const rows = (it.items || []).map(i => {
+      const dup = myIds.has(i.id) || seen.has(itemKey(i));
+      return { item: i, groupName: i.groupId ? (gname.get(i.groupId) || "") : "", dup, pick: !dup };
+    });
+    return { name: it.name, note: it.note || "", section: it.section || "",
+             icon: it.icon || "", targetId: mine ? mine.id : null, rows };
+  }).filter(p => p.rows.length);
+}
+
+function applyMerge(plan){
+  pushUndo("파일 합치기");
+  let added = 0, made = 0;
+  plan.forEach(p => {
+    const rows = p.rows.filter(r => r.pick);
+    if(!rows.length) return;
+    let t = p.targetId ? state.topics.find(x => x.id === p.targetId) : null;
+    if(!t){
+      t = { id: uid(), name: p.name, section: p.section || "", icon: p.icon || "",
+            note: p.note, items: [], groups: [] };
+      state.topics.push(t); made++;
+    }
+    rows.forEach((r, n) => {
+      const i = Object.assign({}, r.item, { id: uid(), seq: (r.item.seq || Date.now()) + n });
+      if(r.groupName){
+        t.groups = t.groups || [];
+        let g = t.groups.find(x => normText(x.name) === normText(r.groupName));
+        if(!g){ g = { id: uid(), name: r.groupName, open: true }; t.groups.push(g); }
+        i.groupId = g.id;
+      }else i.groupId = null;
+      t.items.push(i); added++;
+    });
+  });
+  if(!canStore) $("#fileTag").textContent = "합쳐진 문서";
+  markDirty(); render();
+  flash(`${added}건을 합쳤습니다.` + (made ? ` 새 주제 ${made}개가 생겼습니다.` : ""));
+}
+
+function openMergeModal(plan, fileNames){
+  const total = plan.reduce((n,p) => n + p.rows.length, 0);
+  const dups = plan.reduce((n,p) => n + p.rows.filter(r => r.dup).length, 0);
+
+  const v = modal("파일 합치기",
+    `<p class="hint">${esc(fileNames.join(", "))}<br>
+      기록 ${total}건 중 ${dups}건이 이미 있는 것으로 보입니다. 겹치는 것은 미리 빼 두었습니다.</p>
+     <div class="bulk">
+       <button class="btn small" data-all="1">모두 선택</button>
+       <button class="btn small" data-all="0">모두 해제</button>
+       <button class="btn small" data-all="new">새 기록만</button>
+       <span class="bulk-sp"></span>
+       <span id="mergeTally"></span>
+     </div>
+     <div id="mergeWrap"></div>`,
+    `<button class="btn" data-x>취소</button><button class="btn primary" data-ok>합치기</button>`);
+
+  const okBtn = v.querySelector("[data-ok]");
+
+  function paint(){
+    v.querySelector("#mergeWrap").innerHTML = plan.map((p, pi) => `
+      <div class="mgroup">
+        <div class="mgroup-h">
+          <b>${esc(p.name)}</b>
+          <span>${p.targetId ? "기존 주제에 추가" : "새 주제로 만듭니다"}</span>
+        </div>
+        <div class="cands">${p.rows.map((r, ri) => `
+          <div class="cand mrow">
+            <input type="checkbox" data-p="${pi}" data-r="${ri}" ${r.pick?"checked":""} aria-label="담기">
+            <span class="cd">${esc(r.item.date||"")}${r.item.time?`<br>${esc(r.item.time)}`:""}</span>
+            <span class="ct">${esc(r.item.owner?r.item.owner+" · ":"")}${esc(r.item.title)}
+              ${r.groupName?`<span class="tag sub">${esc(r.groupName)}</span>`:""}</span>
+            <span class="mstat ${r.dup?"dup":""}">${r.dup?"이미 있음":"새 기록"}</span>
+          </div>`).join("")}</div>
+      </div>`).join("");
+    tally();
+  }
+  function tally(){
+    const n = plan.reduce((a,p) => a + p.rows.filter(r => r.pick).length, 0);
+    v.querySelector("#mergeTally").textContent = `${n}건 담기`;
+    okBtn.disabled = n === 0;
+  }
+
+  v.addEventListener("change", e => {
+    if(e.target.matches("[data-p]")){
+      plan[+e.target.dataset.p].rows[+e.target.dataset.r].pick = e.target.checked;
+      tally();
+    }
+  });
+  v.addEventListener("click", e => {
+    const b = e.target.closest("[data-all]");
+    if(!b) return;
+    const mode = b.dataset.all;
+    plan.forEach(p => p.rows.forEach(r => {
+      r.pick = mode === "1" ? true : mode === "0" ? false : !r.dup;
+    }));
+    paint();
+  });
+
+  v.querySelector("[data-x]").onclick = () => v.remove();
+  okBtn.onclick = () => { v.remove(); applyMerge(plan); };
+
+  paint();
+}
+
+async function mergeFiles(files){
+  const names = [], parts = [], failed = [];
+  for(const f of Array.from(files)){
+    try{
+      const text = await readText(f);
+      const d = text.trim() ? normalizeState(text) : null;
+      if(d && d.topics.length){ parts.push(d); names.push(f.name); }
+      else failed.push(f.name);
+    }catch(err){ console.error(f.name, err); failed.push(f.name); }
+  }
+
+  if(!parts.length){
+    alert("합칠 수 있는 파일이 없습니다.\n" +
+          (failed.length ? "읽지 못한 파일: " + failed.join(", ") + "\n\n" : "") +
+          "이 도구에서 내보낸 업무허브_*.json 파일을 골라 주세요.");
+    return;
+  }
+  if(failed.length) flash(`${failed.length}개 파일은 읽지 못해 건너뛰었습니다.`);
+
+    const merged = { topics: [] };
+    parts.forEach(d => d.topics.forEach(t => {
+      const same = merged.topics.find(x => normText(x.name) === normText(t.name));
+      if(same){
+        same.items = same.items.concat(t.items || []);
+        same.groups = (same.groups || []).concat(t.groups || []);
+      }else{
+        merged.topics.push({ name: t.name, note: t.note || "",
+          section: t.section || "", icon: t.icon || "",
+          items: (t.items||[]).slice(), groups: (t.groups||[]).slice() });
+      }
+    }));
+    const plan = buildMergePlan(merged);
+    if(!plan.length){ alert("가져올 기록이 없습니다."); return; }
+    openMergeModal(plan, names);
+}
+
+/* ─────────── 저장 / 불러오기 ─────────── */
+async function writeJson(obj, name, whole){
+  const text = JSON.stringify(obj, null, 2);
+
+  // 브라우저가 지원하면 저장할 폴더를 직접 고르게 합니다.
+  if(window.showSaveFilePicker){
+    try{
+      const handle = await window.showSaveFilePicker({
+        suggestedName: name,
+        types: [{ description: "업무 관리 자료", accept: { "application/json": [".json"] } }]
+      });
+      const w = await handle.createWritable();
+      await w.write(text);
+      await w.close();
+      if(whole) afterSave();
+      flash("고르신 위치에 저장했습니다.");
+      return;
+    }catch(err){
+      if(err && err.name === "AbortError") return;   // 사용자가 취소함
+      console.error(err);                            // 그 밖의 경우 아래 방식으로
+    }
+  }
+
+  const blob = new Blob([text], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  if(whole) afterSave();
+  flash("내려받기 폴더에 저장했습니다. 이 브라우저에서는 위치를 고를 수 없습니다.");
+}
+
+function safeName(s){
+  return String(s || "주제").replace(/[\\\/:*?"<>|]/g, "").replace(/\s+/g, "_").slice(0, 40);
+}
+
+function save(){
+  return writeJson(state, `업무허브_${today().replace(/-/g,"")}.json`, true);
+}
+
+/* 지금 보고 있는 주제만 따로 내보냅니다. 받은 사람은 파일 합치기로 넣으면 됩니다. */
+function saveTopic(t){
+  const one = { topics: [JSON.parse(JSON.stringify(t))] };
+  return writeJson(one, `업무허브_${safeName(t.name)}_${today().replace(/-/g,"")}.json`, false);
+}
+
+/* 주제 배열을 묶음 단위 덩어리로 나눕니다. (배열 순서 = 화면 순서) */
+function sectionBlocks(){
+  const blocks = [];
+  const by = new Map();
+  state.topics.forEach(t => {
+    const s = t.section || "";
+    if(!by.has(s)){ const o = { name: s, topics: [] }; by.set(s, o); blocks.push(o); }
+    by.get(s).topics.push(t);
+  });
+  return blocks;
+}
+
+function moveSection(name, dir){
+  const blocks = sectionBlocks();
+  const i = blocks.findIndex(b => b.name === name);
+  const j = i + dir;
+  if(i < 0 || j < 0 || j >= blocks.length) return;
+  if(!blocks[j].name && j === 0) return;   // 묶음 없는 구역은 맨 위에 둡니다
+  pushUndo("묶음 순서 바꾸기");
+  const [b] = blocks.splice(i, 1);
+  blocks.splice(j, 0, b);
+  state.topics = blocks.reduce((a, x) => a.concat(x.topics), []);
+  markDirty(); render();
+}
+
+function sortSectionTopics(name){
+  const blocks = sectionBlocks();
+  const b = blocks.find(x => x.name === name);
+  if(!b || b.topics.length < 2) return;
+  pushUndo("묶음 안 주제 정렬");
+  b.topics.sort((x, y) => x.name.localeCompare(y.name, "ko", { numeric: true }));
+  state.topics = blocks.reduce((a, x) => a.concat(x.topics), []);
+  markDirty(); render();
+  flash(`"${name}" 묶음의 주제 ${b.topics.length}개를 이름순으로 정렬했습니다.`);
+}
+
+/* 묶음 관리 메뉴 — 사이드바의 "⋯" 버튼에서 엽니다. */
+function openSecMenu(name){
+  const named = sectionBlocks().filter(b => b.name);
+  const i = named.findIndex(b => b.name === name);
+  const v = modal(`묶음: ${name}`,
+    `<div class="menu-col">
+      <button class="btn" data-a="up" ${i<=0?"disabled":""}>↑ 위로 이동</button>
+      <button class="btn" data-a="down" ${i===named.length-1?"disabled":""}>↓ 아래로 이동</button>
+      <button class="btn" data-a="sort">주제 이름순 정렬 (1강 … 10강 순서 인식)</button>
+      <button class="btn" data-a="rename">묶음 이름 바꾸기</button>
+      <button class="btn" data-a="export">JSON 파일로 내보내기</button>
+    </div>`,
+    `<button class="btn primary" data-x>닫기</button>`);
+  v.querySelector("[data-x]").onclick = () => v.remove();
+  v.addEventListener("click", e => {
+    const b = e.target.closest("[data-a]");
+    if(!b || b.disabled) return;
+    const a = b.dataset.a;
+    v.remove();
+    if(a === "up") moveSection(name, -1);
+    else if(a === "down") moveSection(name, 1);
+    else if(a === "sort") sortSectionTopics(name);
+    else if(a === "export") saveSection(name);
+    else if(a === "rename"){
+      const n = prompt("묶음 이름", name);
+      if(n && n.trim() && n.trim() !== name){
+        pushUndo("묶음 이름 바꾸기");
+        state.topics.forEach(t => { if((t.section||"") === name) t.section = n.trim(); });
+        state.closedSections = (state.closedSections||[]).map(x => x === name ? n.trim() : x);
+        markDirty(); render();
+      }
+    }
+  });
+}
+
+/* 한 묶음에 속한 주제 전체를 한 파일로 내보냅니다. */
+function saveSection(name){
+  const list = state.topics.filter(t => (t.section || "") === name);
+  if(!list.length){ alert("이 묶음에 주제가 없습니다."); return; }
+  const one = { topics: JSON.parse(JSON.stringify(list)) };
+  return writeJson(one, `업무허브_${safeName(name)}_${today().replace(/-/g,"")}.json`, false);
+}
+
+function afterSave(){
+  if(canStore){ status("자동 저장됨", "ok"); }
+  else { dirty = false; status(""); }
+}
+
+/* 예전 판에서 만든 파일이나 조금 다른 형태도 최대한 받아들입니다. */
+function fixDate(v){
+  if(!v) return "";
+  const s = String(v).trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = s.match(/^(\d{4})[.\-\/년\s]+(\d{1,2})[.\-\/월\s]+(\d{1,2})/);
+  if(m) return `${m[1]}-${pad(m[2])}-${pad(m[3])}`;
+  const d = new Date(s);
+  if(!isNaN(d)) return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  return "";
+}
+
+function normalizeItem(i){
+  let ch = i.channel || i.source || "";
+  if(ch === "디스크" || ch === "공유드라이브" || ch === "드라이브" || ch === "공유디스크") ch = "공유폴더";
+  if(ch === "이메일") ch = "메일";
+  if(!CHANNELS.includes(ch)) ch = "기타";
+  const time = String(i.time || "").match(/^(\d{1,2}):(\d{2})/);
+  return {
+    id: i.id || uid(),
+    seq: Number(i.seq) || 0,
+    kind: KINDS.includes(i.kind) ? i.kind : "논의",
+    channel: ch,
+    date: fixDate(i.date) || today(),
+    time: time ? `${pad(time[1])}:${time[2]}` : "",
+    title: String(i.title || i.content || i.text || "").trim(),
+    detail: String(i.detail || i.memo || i.body || ""),
+    path: String(i.path || i.file || i.location || ""),
+    owner: String(i.owner || i.who || i.person || ""),
+    due: fixDate(i.due) || "",
+    done: !!i.done,
+    seen: !!i.seen,
+    pinned: !!i.pinned,
+    doing: !!i.doing,
+    tags: Array.isArray(i.tags)
+      ? i.tags.map(x => String(x).replace(/^#+/, "").trim()).filter(Boolean) : [],
+    comments: Array.isArray(i.comments)
+      ? i.comments.map(c => ({
+          id: c.id || uid(), date: fixDate(c.date) || today(),
+          text: String(c.text || "").trim()
+        })).filter(c => c.text) : [],
+    groupId: i.groupId || i.subId || null
+  };
+}
+
+/* 자료의 뼈대를 찾아 표준 형태로 바꿉니다. 못 알아보면 null 을 돌려줍니다. */
+function normalizeState(raw){
+  let d = raw;
+  if(typeof d === "string") d = JSON.parse(d.replace(/^\uFEFF/, ""));
+  let topics = null;
+  if(Array.isArray(d)) topics = d;
+  else if(d && Array.isArray(d.topics)) topics = d.topics;
+  else if(d && d.state && Array.isArray(d.state.topics)) topics = d.state.topics;
+  else if(d && Array.isArray(d.subjects)) topics = d.subjects;
+  if(!topics) return null;
+
+  const out = topics.map(t => ({
+    id: t.id || uid(),
+    name: String(t.name || t.title || "이름 없는 주제"),
+    icon: String(t.icon || "").slice(0, 4),
+    section: String(t.section || "").trim(),
+    note: String(t.note || t.memo || ""),
+    groups: (t.groups || t.subs || []).map(g => ({
+      id: g.id || uid(),
+      name: String(g.name || g.title || "소주제"),
+      open: g.open !== false
+    })),
+    items: (t.items || t.records || t.entries || []).map(normalizeItem)
+      .filter(i => i.title || i.path || i.detail)
+  }));
+  const savedViews = (d && !Array.isArray(d) && Array.isArray(d.savedViews))
+    ? d.savedViews.map(v => ({
+        id: v.id || uid(), name: String(v.name || "필터").slice(0, 20),
+        f: {
+          kind: KINDS.includes((v.f || {}).kind) ? v.f.kind : null,
+          channel: CHANNELS.includes((v.f || {}).channel) ? v.f.channel : null,
+          openOnly: !!(v.f || {}).openOnly, unseenOnly: !!(v.f || {}).unseenOnly
+        }
+      })) : [];
+  const closedSections = (d && !Array.isArray(d) && Array.isArray(d.closedSections))
+    ? d.closedSections.map(String) : [];
+  const tagBans = (d && !Array.isArray(d) && Array.isArray(d.tagBans))
+    ? d.tagBans.map(String).filter(Boolean) : [];
+  return { topics: out, activeId: (out[0] || {}).id || null, savedViews, closedSections, tagBans };
+}
+
+/* 파일 읽기. 최신 방식을 먼저 쓰고, 안 되면 예전 방식으로 물러섭니다. */
+function readText(file){
+  if(file.text) return file.text();
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result || ""));
+    r.onerror = () => rej(r.error || new Error("읽기 실패"));
+    r.readAsText(file, "utf-8");
+  });
+}
+function readBytes(file){
+  if(file.arrayBuffer) return file.arrayBuffer();
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = () => rej(r.error || new Error("읽기 실패"));
+    r.readAsArrayBuffer(file);
+  });
+}
+
+async function load(file){
+  let text = "";
+  try{ text = await readText(file); }
+  catch(err){
+    alert(`"${file.name}" 을(를) 열지 못했습니다. 파일이 다른 곳에 있거나 권한이 없을 수 있습니다.`);
+    return;
+  }
+  if(!text.trim()){
+    alert(`"${file.name}" 의 내용이 비어 있게 읽혔습니다.\n` +
+          `파일을 컴퓨터에 내려받은 뒤 다시 골라 보세요. 클라우드에 있는 파일은 이렇게 되기도 합니다.`);
+    return;
+  }
+
+  let data = null, why = "";
+  try{
+    data = normalizeState(text);
+    if(!data) why = "주제 목록을 찾지 못했습니다.";
+    else if(!data.topics.length) why = "안에 주제가 하나도 없습니다.";
+  }catch(err){
+    why = "JSON 형식이 아닙니다. (" + (err && err.message ? err.message : "읽기 실패") + ")";
+  }
+
+  if(why){
+    alert(`"${file.name}" 을(를) 읽지 못했습니다.\n${why}\n\n` +
+          `이 도구에서 내보낸 업무허브_*.json 파일인지 확인해 주세요. ` +
+          `다른 사람의 파일을 지금 자료에 더하시려면 "파일 합치기"를 쓰세요.`);
+    return;
+  }
+
+  pushUndo("파일 불러오기");
+  state = data;
+  $("#fileTag").textContent = file.name;
+  searching = ""; $("#q").value = "";
+  merging = false; picked.clear();
+  render();
+  if(canStore) storeSave();
+  else { dirty = false; status(""); }
+  flash(`${state.topics.length}개 주제를 불러왔습니다.`);
+}
+
+/* ─────────── 이벤트 ─────────── */
+$("#btnAddTopic").onclick = () => {
+  const secs = [...new Set(state.topics.map(t => t.section).filter(Boolean))];
+  const v = modal("주제 추가",
+    `<div class="field"><label for="t_sec">묶음 (상위 분류 — 비우면 묶음 없음)</label>
+      <input id="t_sec" list="secList">
+      <datalist id="secList">${secs.map(s => `<option value="${esc(s)}">`).join("")}</datalist></div>
+     <div class="field"><label for="t_name">주제 이름 (하나만 만들 때)</label>
+      <input id="t_name"></div>
+     <div class="field"><label for="t_multi">여러 개 한꺼번에 — 한 줄에 하나씩.
+       "1~12강"이라고 쓰면 1강, 2강, … 12강으로 펼쳐집니다</label>
+      <textarea id="t_multi" rows="3" placeholder="1~12강&#10;공통논의사항"></textarea></div>`,
+    `<button class="btn" data-x>취소</button><button class="btn primary" data-ok>만들기</button>`);
+  v.querySelector("[data-x]").onclick = () => v.remove();
+  const ok = () => {
+    const names = [];
+    const single = v.querySelector("#t_name").value.trim();
+    if(single) names.push(single);
+    v.querySelector("#t_multi").value.split(/\r?\n/).forEach(l => {
+      l = l.trim();
+      if(l) names.push(l);
+    });
+    // "1~12강" 같은 범위를 펼칩니다.
+    const out = [];
+    names.forEach(n => {
+      const m = n.match(/^제?\s*(\d{1,2})\s*[~\-–]\s*(\d{1,2})\s*(강|차시|회차)$/);
+      if(m && +m[1] <= +m[2]){
+        for(let k = +m[1]; k <= +m[2] && out.length < 100; k++) out.push(k + m[3]);
+      }else out.push(n);
+    });
+    if(!out.length){ v.querySelector("#t_name").focus(); return; }
+
+    const sec = v.querySelector("#t_sec").value.trim();
+    // 같은 묶음에 같은 이름이 이미 있으면 건너뜁니다.
+    const exists = new Set(state.topics
+      .filter(t => (t.section||"") === sec).map(t => normText(t.name)));
+    const made = [];
+    out.forEach(n => {
+      if(exists.has(normText(n))) return;
+      exists.add(normText(n));
+      made.push({ id: uid(), name: n, section: sec, icon: "", note: "", items: [], groups: [] });
+    });
+    if(!made.length){ alert("전부 이미 있는 주제라 새로 만들 것이 없습니다."); return; }
+
+    pushUndo(made.length > 1 ? `주제 ${made.length}개 추가` : "주제 추가");
+    state.topics.push(...made);
+    state.activeId = made[0].id;
+    v.remove(); markDirty(); searching=""; $("#q").value=""; render();
+    if(made.length > 1) flash(`주제 ${made.length}개를 만들었습니다.` + (sec ? ` (${sec})` : ""));
+  };
+  v.querySelector("[data-ok]").onclick = ok;
+  v.querySelector("#t_name").onkeydown = e => { if(e.key==="Enter") ok(); };
+};
+
+/* 기존 주제들을 골라 한꺼번에 묶음으로 옮깁니다. */
+$("#btnSecAssign").onclick = () => {
+  if(!state.topics.length){ alert("주제가 없습니다. 먼저 주제를 만들어 주세요."); return; }
+  const secs = [...new Set(state.topics.map(t => t.section).filter(Boolean))];
+  const v = modal("주제를 묶음으로 이동",
+    `<div class="field"><label for="sa_sec">넣을 묶음 이름 (비우고 이동하면 묶음에서 빠집니다)</label>
+      <input id="sa_sec" list="saList">
+      <datalist id="saList">${secs.map(s => `<option value="${esc(s)}">`).join("")}</datalist></div>
+     <div class="bulk">
+       <button class="btn small" data-all="1">모두 선택</button>
+       <button class="btn small" data-all="0">모두 해제</button>
+       <button class="btn small" data-all="none">묶음 없는 것만</button>
+     </div>
+     <div class="cands">${state.topics.map((t,i) => `
+       <div class="cand" style="grid-template-columns:26px 1fr 110px">
+         <input type="checkbox" data-i="${i}" aria-label="선택">
+         <span class="ct">${t.icon?esc(t.icon)+" ":""}${esc(t.name)}</span>
+         <span class="cd">${esc(t.section || "—")}</span>
+       </div>`).join("")}</div>`,
+    `<button class="btn" data-x>취소</button><button class="btn primary" data-ok>이동</button>`);
+
+  v.querySelector("[data-x]").onclick = () => v.remove();
+  v.addEventListener("click", e => {
+    const b = e.target.closest("[data-all]");
+    if(!b) return;
+    v.querySelectorAll(".cand input[type=checkbox]").forEach(cb => {
+      const t = state.topics[+cb.dataset.i];
+      cb.checked = b.dataset.all === "1" ? true
+        : b.dataset.all === "0" ? false
+        : !(t && t.section);
+    });
+  });
+  v.querySelector("[data-ok]").onclick = () => {
+    const sec = v.querySelector("#sa_sec").value.trim();
+    const idxs = [...v.querySelectorAll(".cand input:checked")].map(cb => +cb.dataset.i);
+    if(!idxs.length){ alert("옮길 주제를 선택하세요."); return; }
+    pushUndo("묶음 이동");
+    idxs.forEach(ix => { if(state.topics[ix]) state.topics[ix].section = sec; });
+    v.remove(); markDirty(); render();
+    flash(sec ? `주제 ${idxs.length}개를 "${sec}" 묶음으로 옮겼습니다.`
+              : `주제 ${idxs.length}개를 묶음에서 뺐습니다.`);
+  };
+};
+
+$("#topicList").onclick = e => {
+  const sm = e.target.closest("[data-smenu]");
+  if(sm){ openSecMenu(sm.dataset.smenu); return; }
+  const s = e.target.closest("[data-sec]");
+  if(s){
+    const name = s.dataset.sec;
+    const arr = state.closedSections || (state.closedSections = []);
+    const at = arr.indexOf(name);
+    if(at >= 0) arr.splice(at, 1); else arr.push(name);
+    markDirty(); renderTopics();
+    return;
+  }
+  const b = e.target.closest("[data-t]");
+  if(!b) return;
+  state.activeId = b.dataset.t; searching=""; $("#q").value="";
+  merging = false; picked.clear();
+  render();
+  showPanel();
+};
+
+$("#tagList").onclick = e => {
+  const del = e.target.closest("[data-qtagdel]");
+  if(del){
+    const w = del.dataset.qtagdel;
+    if(confirm(`"#${w}" 키워드를 숨길까요?\n본문에서 자동 인식된 것만 모든 기록에서 숨겨지고, 직접 입력한 키워드는 남습니다.`)){
+      (state.tagBans || (state.tagBans = [])).push(w);
+      markDirty(); render();
+    }
+    return;
+  }
+  const un = e.target.closest("[data-qtagun]");
+  if(un){
+    state.tagBans = (state.tagBans || []).filter(x => x !== un.dataset.qtagun);
+    markDirty(); render();
+    return;
+  }
+  const b = e.target.closest("[data-qtag]");
+  if(!b) return;
+  searching = "#" + b.dataset.qtag;
+  $("#q").value = searching;
+  renderPanel();
+  showPanel();
+};
+
+$("#panel").addEventListener("change", e => {
+  if(e.target.matches("[data-pick]")){
+    const id = e.target.dataset.pick;
+    if(e.target.checked) picked.add(id); else picked.delete(id);
+    renderPanel();
+  }
+});
+
+$("#panel").addEventListener("click", e => {
+  const t = activeTopic();
+
+  // 해시태그 칩을 누르면 그 키워드로 전체 검색
+  const hb = e.target.closest("[data-tag]");
+  if(hb){
+    searching = "#" + hb.dataset.tag;
+    $("#q").value = searching;
+    renderPanel();
+    showPanel();
+    return;
+  }
+
+  const go = e.target.closest("[data-go]");
+  if(go && !e.target.closest("button")){
+    const itemId = go.dataset.item;
+    state.activeId = go.dataset.go; searching=""; $("#q").value="";
+    merging = false; picked.clear();
+    if(itemId){
+      // 항목이 필터에 가려지거나 접힌 소주제 안에 있으면 보이게 만든 뒤 이동합니다.
+      filter = {kind:null, channel:null, openOnly:false, unseenOnly:false};
+      const f = findOwner(itemId);
+      if(f && f.i.groupId){
+        const g = (f.t.groups||[]).find(x => x.id === f.i.groupId);
+        if(g) g.open = true;
+      }
+    }
+    render();
+    if(itemId){
+      const el = $("#panel").querySelector(`.entry[data-id="${itemId}"]`);
+      if(el){
+        el.scrollIntoView({block:"center"});
+        el.classList.add("hilite");
+        setTimeout(() => el.classList.remove("hilite"), 1800);
+      }
+    }
+    return;
+  }
+
+  if(e.target.id === "addItem"){ openItemModal(null); return; }
+  if(e.target.id === "todoToggle"){ todoView = !todoView; renderPanel(); return; }
+
+  const vm = e.target.closest("[data-vm]");
+  if(vm){ viewMode = vm.dataset.vm; merging = false; picked.clear(); renderPanel(); return; }
+
+  const pn = e.target.closest("[data-pin]");
+  if(pn){
+    const f = findOwner(pn.dataset.pin);
+    if(f){ pushUndo(f.i.pinned ? "고정 해제" : "고정"); f.i.pinned = !f.i.pinned; markDirty(); render(); }
+    return;
+  }
+  const cm = e.target.closest("[data-cmt]");
+  if(cm){
+    const f = findOwner(cm.dataset.cmt);
+    if(f){
+      const txt = prompt("경과 한 줄 (예: 수정본 회신함)");
+      if(txt && txt.trim()){
+        pushUndo("경과 추가");
+        (f.i.comments || (f.i.comments = [])).push({ id: uid(), date: today(), text: txt.trim() });
+        markDirty(); render();
+      }
+    }
+    return;
+  }
+  const cd = e.target.closest("[data-cdel]");
+  if(cd){
+    const parts = cd.dataset.cdel.split("|");
+    const f = findOwner(parts[0]);
+    if(f && f.i.comments){
+      pushUndo("경과 지우기");
+      f.i.comments = f.i.comments.filter(c => c.id !== parts[1]);
+      markDirty(); render();
+    }
+    return;
+  }
+  const bm = e.target.closest("[data-bmv]");
+  if(bm){
+    const parts = bm.dataset.bmv.split("|");
+    const f = findOwner(parts[0]);
+    if(f){
+      pushUndo("할일 단계 이동");
+      const i = f.i;
+      if(parts[1] === "right"){
+        if(i.doing){ i.doing = false; i.done = true; }
+        else if(!i.done) i.doing = true;
+      }else{
+        if(i.done){ i.done = false; i.doing = true; }
+        else if(i.doing) i.doing = false;
+      }
+      markDirty(); render();
+    }
+    return;
+  }
+  const sf = e.target.closest("[data-sfil]");
+  if(sf){
+    const sv = (state.savedViews||[]).find(x => x.id === sf.dataset.sfil);
+    if(sv){ filter = Object.assign({}, sv.f); renderPanel(); }
+    return;
+  }
+  const sfd = e.target.closest("[data-sfdel]");
+  if(sfd){
+    state.savedViews = (state.savedViews||[]).filter(x => x.id !== sfd.dataset.sfdel);
+    markDirty(); renderPanel();
+    return;
+  }
+  if(e.target.closest("[data-sfsave]")){
+    const n = prompt("이 필터 조합의 이름 (예: 미결 메일)");
+    if(n && n.trim()){
+      (state.savedViews || (state.savedViews = [])).push({
+        id: uid(), name: n.trim().slice(0, 20), f: Object.assign({}, filter)
+      });
+      markDirty(); renderPanel();
+    }
+    return;
+  }
+  if(e.target.id === "iconTopic"){
+    if(!t) return;
+    const v = prompt("주제 아이콘으로 쓸 이모지 하나 (지우려면 비워 두세요)", t.icon || "");
+    if(v !== null){ t.icon = v.trim().slice(0, 4); markDirty(); render(); }
+    return;
+  }
+  if(e.target.id === "secTopic"){
+    if(!t) return;
+    const v = prompt("이 주제를 넣을 묶음 이름 (비우면 묶음 없음)", t.section || "");
+    if(v !== null){ t.section = v.trim(); markDirty(); render(); }
+    return;
+  }
+  if(e.target.id === "pasteHere"){ openPasteModal(); return; }
+  if(e.target.id === "emlHere"){ pickFiles("#emlIn", fs => openEmlModal(fs)); return; }
+  if(e.target.id === "txtHere"){ pickFiles("#txtIn", fs => openTxtModal(fs)); return; }
+  if(e.target.id === "flatToggle"){ flatView = !flatView; renderPanel(); return; }
+  if(e.target.id === "mergeMode"){ merging = !merging; picked.clear(); renderPanel(); return; }
+  if(e.target.id === "mergeClear"){ picked.clear(); renderPanel(); return; }
+  if(e.target.id === "doMerge"){ if(t) mergePicked(t); return; }
+  if(e.target.id === "doGroup"){ if(t) openGroupModal(t); return; }
+  if(e.target.id === "doSeen"){
+    if(!t) return;
+    pushUndo("확인 표시");
+    const on = t.items.some(i => picked.has(i.id) && !i.seen);
+    let n = 0;
+    t.items.forEach(i => { if(picked.has(i.id)){ i.seen = on; n++; } });
+    picked.clear(); markDirty(); render();
+    flash(on ? `${n}건을 확인 표시했습니다.` : `${n}건의 확인을 해제했습니다.`);
+    return;
+  }
+
+  const tm = e.target.closest("[data-tmove]");
+  if(tm && t){
+    // 같은 묶음 안의 이웃 주제와 자리를 바꿉니다.
+    const dir = +tm.dataset.tmove;
+    const i = state.topics.findIndex(x => x.id === t.id);
+    let j = i + dir;
+    while(j >= 0 && j < state.topics.length
+          && (state.topics[j].section || "") !== (t.section || "")) j += dir;
+    if(j >= 0 && j < state.topics.length){
+      pushUndo("주제 순서 바꾸기");
+      const [x] = state.topics.splice(i, 1);
+      state.topics.splice(j, 0, x);
+      markDirty(); render();
+    }
+    return;
+  }
+
+  const gt = e.target.closest("[data-gtoggle]");
+  if(gt && t){
+    const g = (t.groups||[]).find(x => x.id === gt.dataset.gtoggle);
+    if(g){ g.open = g.open === false; markDirty(); renderPanel(); }
+    return;
+  }
+  const gm = e.target.closest("[data-gmove]");
+  if(gm && t){
+    const gs = t.groups || [];
+    const i = gs.findIndex(x => x.id === gm.dataset.gmove);
+    const j = i + (+gm.dataset.dir);
+    if(i >= 0 && j >= 0 && j < gs.length){
+      pushUndo("소주제 순서 바꾸기");
+      const [x] = gs.splice(i, 1); gs.splice(j, 0, x);
+      markDirty(); renderPanel();
+    }
+    return;
+  }
+  const gr = e.target.closest("[data-grename]");
+  if(gr && t){
+    const g = (t.groups||[]).find(x => x.id === gr.dataset.grename);
+    if(g){
+      const n = prompt("소주제 제목", g.name);
+      if(n && n.trim()){ g.name = n.trim(); markDirty(); render(); }
+    }
+    return;
+  }
+  const gd = e.target.closest("[data-gdel]");
+  if(gd && t){
+    const g = (t.groups||[]).find(x => x.id === gd.dataset.gdel);
+    if(g && confirm(`"${g.name}" 묶음만 해제합니다. 안의 기록은 그대로 남습니다.`)){
+      pushUndo("소주제 해제");
+      t.items.forEach(i => { if(i.groupId === g.id) i.groupId = null; });
+      t.groups = t.groups.filter(x => x.id !== g.id);
+      markDirty(); render();
+    }
+    return;
+  }
+
+  if(e.target.id === "exportTopic"){ if(t) saveTopic(t); return; }
+  if(e.target.id === "exportSec"){ if(t && t.section) saveSection(t.section); return; }
+  if(e.target.id === "renameTopic"){
+    if(!t) return;
+    const n = prompt("주제 이름", t.name);
+    if(n && n.trim()){ t.name = n.trim(); markDirty(); render(); }
+    return;
+  }
+  if(e.target.id === "delTopic"){
+    if(!t) return;
+    if(confirm(`"${t.name}" 주제와 그 안의 기록 ${t.items.length}건을 삭제합니다. 계속할까요?`)){
+      pushUndo("주제 삭제");
+      state.topics = state.topics.filter(x => x.id !== t.id);
+      state.activeId = (state.topics[0]||{}).id || null;
+      markDirty(); render();
+    }
+    return;
+  }
+  const chip = e.target.closest("[data-f]");
+  if(chip){
+    const k = chip.dataset.f, val = chip.dataset.v;
+    if(k === "reset") filter = {kind:null, channel:null, openOnly:false, unseenOnly:false};
+    else if(k === "kind") filter.kind = filter.kind === val ? null : val;
+    else if(k === "channel") filter.channel = filter.channel === val ? null : val;
+    else if(k === "open") filter.openOnly = !filter.openOnly;
+    else if(k === "unseen") filter.unseenOnly = !filter.unseenOnly;
+    renderPanel(); return;
+  }
+  const mv = e.target.closest("[data-move]");
+  if(mv){ const f = findOwner(mv.dataset.move); if(f) openMoveModal(f.t, f.i); return; }
+  const ed = e.target.closest("[data-edit]");
+  if(ed){ const f = findOwner(ed.dataset.edit); if(f) openItemModal(f.i, f.t); return; }
+  const sn = e.target.closest("[data-seen]");
+  if(sn){ const f = findOwner(sn.dataset.seen);
+    if(f){ pushUndo(f.i.seen ? "확인 해제" : "확인 표시"); f.i.seen = !f.i.seen; markDirty(); render(); } return; }
+  const dn = e.target.closest("[data-done]");
+  if(dn){ const f = findOwner(dn.dataset.done);
+    if(f){ pushUndo(f.i.done ? "완료 되돌리기" : "완료 표시"); f.i.done = !f.i.done; markDirty(); render(); } return; }
+  const dl = e.target.closest("[data-del]");
+  if(dl){
+    const f = findOwner(dl.dataset.del);
+    if(f && confirm("이 기록을 삭제할까요?")){
+      pushUndo("기록 삭제");
+      f.t.items = f.t.items.filter(x => x.id !== dl.dataset.del);
+      picked.delete(dl.dataset.del);
+      markDirty(); render();
+    }
+  }
+});
+
+$("#panel").addEventListener("input", e => {
+  if(e.target.id === "topicNote"){ const t = activeTopic(); if(t){ t.note = e.target.value; markDirty(); renderTopics(); } }
+});
+
+let qTimer;
+$("#q").addEventListener("input", e => {
+  clearTimeout(qTimer);
+  qTimer = setTimeout(() => {
+    searching = e.target.value.trim();
+    renderPanel();
+    if(searching) showPanel();
+  }, 160);
+});
+
+document.body.dataset.mnav = "list";   // 모바일 시작 화면은 주제 목록
+$("#btnBack").onclick = () => setMNav("list");
+
+$("#btnPaste").onclick = openPasteModal;
+$("#btnPrint").onclick = openPrintModal;
+
+/* ── 메뉴 열고 닫기 ── */
+const menuBtn = $("#btnMenu"), menuBox = $("#appMenu");
+function closeMenu(){ menuBox.hidden = true; menuBtn.setAttribute("aria-expanded", "false"); }
+menuBtn.onclick = e => {
+  e.stopPropagation();
+  const open = menuBox.hidden;
+  menuBox.hidden = !open;
+  menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
+};
+document.addEventListener("click", e => {
+  if(!menuBox.hidden && !e.target.closest(".menu-wrap")) closeMenu();
+});
+menuBox.addEventListener("click", e => { if(e.target.closest("button")) closeMenu(); });
+
+/* ── 화면 모드: 자동 → 어두움 → 밝음 순서로 바뀝니다 ── */
+const THEME_KEY = "workhub:theme";
+let themeMode = "auto";
+try{ themeMode = localStorage.getItem(THEME_KEY) || "auto"; }catch(err){}
+function applyTheme(){
+  const root = document.documentElement;
+  if(themeMode === "dark" || themeMode === "light") root.dataset.theme = themeMode;
+  else delete root.dataset.theme;
+  const dark = themeMode === "dark"
+    || (themeMode !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+  const mc = document.querySelector('meta[name="theme-color"]');
+  if(mc) mc.content = dark ? "#14181f" : "#e8eaee";
+  $("#btnTheme").textContent =
+    "화면: " + (themeMode === "dark" ? "어두움" : themeMode === "light" ? "밝음" : "자동");
+}
+applyTheme();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+$("#btnTheme").onclick = () => {
+  themeMode = themeMode === "auto" ? "dark" : themeMode === "dark" ? "light" : "auto";
+  try{ localStorage.setItem(THEME_KEY, themeMode); }catch(err){}
+  applyTheme();
+};
+$("#btnUndo").onclick = undo;
+document.addEventListener("keydown", e => {
+  const el = document.activeElement;
+  const typing = el && /input|textarea|select/i.test(el.tagName);
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !e.shiftKey){
+    if(typing) return;
+    e.preventDefault(); undo();
+    return;
+  }
+  // "/" 또는 Ctrl+K 로 검색창에 바로 갑니다.
+  if((e.key === "/" && !typing && !document.querySelector(".veil"))
+     || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k")){
+    e.preventDefault(); $("#q").focus(); $("#q").select();
+  }
+});
+$("#btnSave").onclick = save;
+/* 파일을 고른 뒤 입력칸을 비우면 브라우저에 따라 내용까지 사라집니다.
+   그래서 비우는 일은 다음 번에 열기 직전에 합니다. */
+function pickFiles(id, run){
+  const el = $(id);
+  el.value = "";
+  el.onchange = () => { if(el.files.length) run(el.files); };
+  el.click();
+}
+$("#btnLoad").onclick = () => pickFiles("#fileIn", fs => load(fs[0]));
+$("#btnMerge").onclick = () => pickFiles("#mergeIn", fs => mergeFiles(fs));
+$("#btnSync").onclick = async () => {
+  if(!canFS){
+    alert("이 브라우저는 파일 연결을 지원하지 않습니다. 크롬이나 엣지에서 열어 주세요.");
+    return;
+  }
+  // 지난 세션에 연결해 둔 파일이 있으면, 누른 김에 권한을 다시 받아 잇습니다.
+  if(!fileHandle && pendingHandle){
+    try{
+      const p = await pendingHandle.requestPermission({ mode: "readwrite" });
+      if(p === "granted"){
+        const h = pendingHandle; pendingHandle = null;
+        await connectHandle(h);
+        flash("동기화 파일을 다시 연결했습니다.");
+        return;
+      }
+    }catch(err){ console.error(err); }
+  }
+  openSyncModal();
+};
+
+window.addEventListener("beforeunload", e => {
+  if(savePending && storeOk) doSave();      // 남은 변경을 그 자리에서 저장
+  if(dirty && !storeOk){ e.preventDefault(); e.returnValue = ""; }
+});
+
+$("#btnReset").onclick = async () => {
+  if(!confirm("저장된 내용을 모두 지웁니다. 내보내 둔 파일이 없으면 되돌릴 수 없습니다. 계속할까요?")) return;
+  try{ await backendDel(STORE_KEY); await backendDel(BACKUP_KEY); }catch(err){ console.error(err); }
+  state = { topics: [], activeId: null, savedViews: [], closedSections: [], tagBans: [] };
+  searching = ""; $("#q").value = "";
+  status("자동 저장됨", "ok");
+  render();
+};
+
+/* ─────────── 시작 ─────────── */
+function defaultTopics(){
+  return ["진행 업무", "회의·논의", "공통 사항"].map(n =>
+    ({ id: uid(), name: n, section: "", icon: "", note: "", items: [], groups: [] }));
+}
+
+/* 지난 세션에 연결했던 동기화 파일을 찾아, 권한이 살아 있으면 바로 잇고
+   권한 확인이 필요하면 단추를 "동기화 다시 연결"로 바꿔 둡니다. */
+async function restoreSync(){
+  if(!canFS){ paintSync(); return; }
+  try{
+    const h = await idbGet("handle");
+    if(h){
+      let p = "prompt";
+      try{ p = await h.queryPermission({ mode: "readwrite" }); }catch(err){ console.error(err); }
+      if(p === "granted") await connectHandle(h);
+      else pendingHandle = h;
+    }
+  }catch(err){ console.error(err); }
+  paintSync();
+}
+
+(async function init(){
+  if(canStore){
+    $("#fileTag").textContent = "자동 저장";
+    $("#btnReset").hidden = false;
+    status("불러오는 중", "busy");
+    const saved = await storeLoad();
+    if(saved){
+      state = normalizeState(saved) || saved;
+      state.topics.forEach(t => { t.items = t.items || []; t.groups = t.groups || []; });
+      if(!state.topics.some(t => t.id === state.activeId))
+        state.activeId = (state.topics[0] || {}).id || null;
+      status("자동 저장됨", "ok");
+      render();
+      restoreSync();
+      return;
+    }
+    status("자동 저장됨", "ok");
+  }
+  state.topics = defaultTopics();
+  state.activeId = state.topics[0].id;
+  render();
+  restoreSync();
+})();
+</script>
+</body>
+</html>
