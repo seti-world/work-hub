@@ -347,6 +347,21 @@ section.panel{padding:22px 26px;max-width:940px}
 .cand .ct{line-height:1.35;font-size:13px;word-break:break-word;white-space:pre-wrap}
 .cand select{padding:3px 5px;border:1px solid var(--rule);border-radius:3px;font-size:12px;min-width:0}
 .cand select.guessed{border-color:var(--msg);background:var(--accent-soft)}
+/* 메일 후보는 제목만 보이고, 눌러야 본문이 펼쳐집니다 */
+.cand .ct-ttl{display:block;width:100%;text-align:left;border:0;background:none;padding:0;
+  font:inherit;color:var(--ink);cursor:pointer;white-space:normal}
+.cand .ct-ttl:hover{text-decoration:underline}
+.cand .ct-ttl .arr{color:var(--ink-soft);margin-right:5px;font-size:11px}
+.cand:has(.ct-body){align-items:start}
+.cand .ct-body{margin-top:6px;padding:8px 10px;background:var(--code-bg);border-radius:3px;
+  font-size:12.5px;color:var(--ink-soft);white-space:pre-wrap;max-height:280px;overflow:auto}
+
+/* 대화·메일 확인 창은 모서리를 끌어 크기를 바꿀 수 있습니다 */
+.modal.sizable{display:flex;flex-direction:column;resize:both;overflow:hidden;
+  width:min(94vw,760px);max-width:min(94vw,1200px);min-width:330px;
+  min-height:300px;max-height:calc(100vh - 88px)}
+.modal.sizable .content{flex:1;min-height:0;overflow:auto}
+.modal.sizable .cands{max-height:none}
 
 /* ── 사이드바: 묶음·읽지않음·키워드 ── */
 .sec-row{display:flex;align-items:center;min-width:0}
@@ -475,6 +490,7 @@ section.panel{padding:22px 26px;max-width:940px}
   .cand select[data-k]{grid-column:2;justify-self:stretch}
   .cand select[data-t]{grid-column:3;justify-self:stretch}
   .bulk select{max-width:130px}
+  .modal.sizable{resize:none;width:100%;max-width:none;max-height:none;min-height:0}
 }
 
 /* ── 인쇄 · PDF ── */
@@ -520,7 +536,7 @@ section.panel{padding:22px 26px;max-width:940px}
         <button class="btn" id="btnMerge">파일 합치기 (추가)</button>
         <hr>
         <button class="btn danger" id="btnReset" hidden>모두 지우기</button>
-        <div class="menu-ver">2026-09-08 8판</div>
+        <div class="menu-ver">2026-09-08 9판</div>
       </div>
     </div>
     <span class="dirty" id="dirty" hidden>저장 안 됨</span>
@@ -1403,11 +1419,32 @@ function showPanel(){
 }
 
 /* ─────────── 모달 ─────────── */
-function modal(title, contentHTML, footHTML){
+/* cls 에 "sizable" 을 주면 창 오른쪽 아래를 끌어 크기를 바꿀 수 있고,
+   바꾼 크기는 다음에 열 때도 그대로 이어집니다. */
+const BOX_KEY = "workhub:modalbox";
+function modal(title, contentHTML, footHTML, cls){
   const v = document.createElement("div");
   v.className = "veil";
-  v.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}"><h3>${esc(title)}</h3>
+  v.innerHTML = `<div class="modal ${cls||""}" role="dialog" aria-modal="true" aria-label="${esc(title)}"><h3>${esc(title)}</h3>
     <div class="content">${contentHTML}</div><div class="foot">${footHTML}</div></div>`;
+
+  if(cls === "sizable"){
+    const box = v.querySelector(".modal");
+    try{
+      const p = JSON.parse(localStorage.getItem(BOX_KEY) || "null");
+      if(p && p.w > 320 && p.h > 260){ box.style.width = p.w + "px"; box.style.height = p.h + "px"; }
+    }catch{}
+    if(window.ResizeObserver){
+      let t = null;
+      new ResizeObserver(() => {
+        clearTimeout(t);
+        t = setTimeout(() => {
+          try{ localStorage.setItem(BOX_KEY,
+            JSON.stringify({ w: box.offsetWidth, h: box.offsetHeight })); }catch{}
+        }, 300);
+      }).observe(box);
+    }
+  }
 
   // 배경 클릭·Escape 로 닫을 때, v.guard 가 참을 돌려주면 한 번 물어봅니다.
   const tryClose = () => {
@@ -2173,7 +2210,11 @@ function matchTopic(hay, idx){
 /* 번호가 매겨진 주제는 날짜 흐름대로 이어지는 경우가 많으므로,
    "3강"처럼 명확한 단서가 있는 대화를 먼저 확정하고
    단서 없는 인접 대화는 앞뒤의 그 주제를 이어받게 합니다. */
-function guessTopics(cands, fallbackId){
+/* 후보마다 어느 주제로 갈지 정합니다.
+   spread 가 참이면 단서가 없는 줄이 앞뒤 줄의 주제를 이어받습니다.
+   대화는 한 주제를 두고 여러 줄에 걸쳐 길게 이야기하므로 이어받는 편이 맞지만,
+   메일은 한 통씩 내용이 따로 놀기 때문에 이어받지 않습니다(spread = false). */
+function guessTopics(cands, fallbackId, spread){
   const owners = allOwners();
   cands.forEach(c => {
     const o = String(c.owner || "").trim();
@@ -2188,17 +2229,19 @@ function guessTopics(cands, fallbackId){
     c.guessed = !!hit;
     c.topicId = hit || null;
   });
-  // 2차: 단서가 없는 대화는 바로 앞 대화의 주제를 이어받습니다.
-  let carry = null;
-  cands.forEach(c => {
-    if(c.topicId) carry = c.topicId;
-    else if(carry) c.topicId = carry;
-  });
-  // 3차: 첫 단서보다 앞에 있는 대화는 그 첫 단서의 주제를 따릅니다.
-  let next = null;
-  for(let i = cands.length - 1; i >= 0; i--){
-    if(cands[i].topicId) next = cands[i].topicId;
-    else if(next) cands[i].topicId = next;
+  if(spread !== false){
+    // 2차: 단서가 없는 대화는 바로 앞 대화의 주제를 이어받습니다.
+    let carry = null;
+    cands.forEach(c => {
+      if(c.topicId) carry = c.topicId;
+      else if(carry) c.topicId = carry;
+    });
+    // 3차: 첫 단서보다 앞에 있는 대화는 그 첫 단서의 주제를 따릅니다.
+    let next = null;
+    for(let i = cands.length - 1; i >= 0; i--){
+      if(cands[i].topicId) next = cands[i].topicId;
+      else if(next) cands[i].topicId = next;
+    }
   }
   // 그래도 정해지지 않으면 기본 주제로 둡니다.
   cands.forEach(c => { if(!c.topicId) c.topicId = fallbackId; });
@@ -2337,7 +2380,7 @@ function openEmlModal(files){
   const v = modal("메일 파일 읽기",
     `<p class="hint">읽는 중입니다…</p><div id="candWrap"></div>`,
     `<button class="btn" data-x>취소</button>
-     <button class="btn primary" data-ok disabled>선택 항목 담기</button>`);
+     <button class="btn primary" data-ok disabled>선택 항목 담기</button>`, "sizable");
   const okBtn = v.querySelector("[data-ok]");
   v.querySelector("[data-x]").onclick = () => v.remove();
 
@@ -2357,9 +2400,10 @@ function openEmlModal(files){
     }
     cands.sort(byTimeAsc);
     const notice = markOldCandidates(cands, true);   // 메일은 내용이 같은 것만 걸러냅니다
-    guessTopics(cands, fallbackId);
+    guessTopics(cands, fallbackId, false);           // 메일은 옆 메일의 주제를 이어받지 않습니다
     v.querySelector(".hint").textContent =
-      `메일 ${cands.length}건을 읽었습니다. 주제와 유형을 확인하고 담아 주세요.`;
+      `메일 ${cands.length}건을 읽었습니다. 제목을 누르면 본문이 펼쳐집니다. `
+      + `주제와 유형을 확인하고 담아 주세요.`;
     mountCands(v, cands, fallbackId, okBtn, "메일", notice);
   }
 }
@@ -2367,6 +2411,8 @@ function openEmlModal(files){
 /* 붙여넣기와 메일 읽기가 함께 쓰는 후보 목록입니다.
    각 줄마다 담을지 여부, 유형, 어느 주제로 보낼지를 고를 수 있습니다. */
 function mountCands(v, cands, fallbackId, okBtn, channel, notice){
+  const mail = channel === "메일";
+  const opened = new Set();     // 본문을 펼쳐 둔 메일 (화면에서만 쓰는 표시)
   const topicOptions = sel => state.topics
     .map(t => `<option value="${t.id}" ${t.id===sel?"selected":""}>${esc(t.name)}</option>`).join("");
 
@@ -2387,9 +2433,18 @@ function mountCands(v, cands, fallbackId, okBtn, channel, notice){
         <div class="cand">
           <input type="checkbox" data-i="${idx}" ${c.pick?"checked":""} aria-label="담기">
           <span class="cd">${esc(c.date)}${c.time?`<br>${esc(c.time)}`:""}</span>
-          <span class="ct">${esc(c.owner?c.owner+" · ":"")}${esc(c.detail || c.title)}${
-            c.dup ? ' <span class="mstat dup">이미 있음</span>'
-            : c.old ? ' <span class="mstat old">이전 범위</span>' : ""}</span>
+          <span class="ct">${(() => {
+            const mark = c.dup ? ' <span class="mstat dup">이미 있음</span>'
+                       : c.old ? ' <span class="mstat old">이전 범위</span>' : "";
+            const who = esc(c.owner ? c.owner + " · " : "");
+            if(!mail) return who + esc(c.detail || c.title) + mark;
+            // 메일은 전문이 길어 목록에서는 제목만 보이고, 제목을 누르면 본문이 펼쳐집니다.
+            const on = opened.has(idx);
+            return `<button type="button" class="ct-ttl" data-open="${idx}"
+                 title="${on?"본문 접기":"본문 펼치기"}"><span class="arr">${on?"▾":"▸"}</span>${
+                 who}${esc(c.title || "(제목 없음)")}</button>${mark}` +
+              (on && c.detail ? `<div class="ct-body">${esc(c.detail)}</div>` : "");
+          })()}</span>
           <select data-k="${idx}">${KINDS.map(k=>`<option ${c.kind===k?"selected":""}>${k}</option>`).join("")}</select>
           <select data-t="${idx}" class="${c.guessed?"guessed":""}">${topicOptions(c.topicId)}</select>
         </div>`;
@@ -2412,8 +2467,11 @@ function mountCands(v, cands, fallbackId, okBtn, channel, notice){
   }
 
   /* 주제를 하나 고치면, "1강"처럼 명확한 단서가 없고(guessed 아님)
-     손으로 바꾼 적 없는(manual 아님) 인접 대화들이 앞뒤로 함께 바뀝니다. */
+     손으로 바꾼 적 없는(manual 아님) 인접 대화들이 앞뒤로 함께 바뀝니다.
+     대화는 한 주제를 길게 이어 가지만 메일은 한 통씩 따로 놀기 때문에,
+     메일에서는 옆으로 번지지 않습니다. */
   function spreadTopic(i0){
+    if(mail) return 0;
     const id = cands[i0].topicId;
     let n = 0;
     for(let i = i0 + 1; i < cands.length; i++){
@@ -2472,6 +2530,12 @@ function mountCands(v, cands, fallbackId, okBtn, channel, notice){
   });
 
   v.addEventListener("click", e => {
+    const op = e.target.closest("[data-open]");
+    if(op){
+      const i = +op.dataset.open;
+      if(opened.has(i)) opened.delete(i); else opened.add(i);
+      repaint(); return;
+    }
     const all = e.target.closest("[data-all]");
     if(all){
       const on = all.dataset.all === "1";
@@ -2526,7 +2590,7 @@ function openTxtModal(files){
   const v = modal("대화 파일 읽기",
     `<p class="hint">읽는 중입니다…</p><div id="candWrap"></div>`,
     `<button class="btn" data-x>취소</button>
-     <button class="btn primary" data-ok disabled>선택 항목 담기</button>`);
+     <button class="btn primary" data-ok disabled>선택 항목 담기</button>`, "sizable");
   const okBtn = v.querySelector("[data-ok]");
   v.querySelector("[data-x]").onclick = () => v.remove();
 
@@ -2549,7 +2613,7 @@ function openTxtModal(files){
     let notice = markOldCandidates(cands);
     if(!anyDate)
       notice = "대화에서 날짜를 인식하지 못해 모두 오늘 날짜로 표시했습니다. " + notice;
-    guessTopics(cands, fallbackId);
+    guessTopics(cands, fallbackId, true);            // 대화는 앞뒤 줄의 주제를 이어받습니다
     v.querySelector(".hint").textContent =
       `대화 ${cands.length}건을 읽었습니다. 주제와 유형을 확인하고 담아 주세요.`;
     mountCands(v, cands, fallbackId, okBtn, "메신저", notice);
@@ -2567,7 +2631,7 @@ function openPasteModal(){
      <div id="candWrap"></div>`,
     `<button class="btn" data-x>취소</button>
      <button class="btn" data-scan>훑어보기</button>
-     <button class="btn primary" data-ok disabled>선택 항목 담기</button>`);
+     <button class="btn primary" data-ok disabled>선택 항목 담기</button>`, "sizable");
 
   // 붙여넣은 내용이 있으면 배경 클릭·Escape 로 닫기 전에 한 번 물어봅니다.
   v.guard = () => {
@@ -2587,7 +2651,7 @@ function openPasteModal(){
     let notice = markOldCandidates(cands);
     if(!cands.sawDate)
       notice = "대화에서 날짜를 인식하지 못해 모두 오늘 날짜로 표시했습니다. " + notice;
-    guessTopics(cands, fallbackId);
+    guessTopics(cands, fallbackId, true);            // 대화는 앞뒤 줄의 주제를 이어받습니다
     mountCands(v, cands, fallbackId, okBtn, "메신저", notice);
   };
 }
