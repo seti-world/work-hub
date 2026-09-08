@@ -543,7 +543,7 @@ section.panel{padding:22px 26px;max-width:940px}
         <button class="btn" id="btnMerge">파일 합치기 (추가)</button>
         <hr>
         <button class="btn danger" id="btnReset" hidden>모두 지우기</button>
-        <div class="menu-ver">2026-09-08 11판</div>
+        <div class="menu-ver">2026-09-09 12판</div>
       </div>
     </div>
     <span class="dirty" id="dirty" hidden>저장 안 됨</span>
@@ -2842,6 +2842,32 @@ function normFull(s){
 function normText(s){ return normFull(s).slice(0, 60); }
 function itemKey(i){ return (i.date||"") + "|" + normText(i.title); }
 
+/* 기록 하나에서 견줄 만한 글을 뽑습니다. 메모가 제목보다 길면 메모를 씁니다. */
+function itemBody(i){
+  const t = normFull(i.title), d = normFull(i.detail);
+  return d.length >= t.length ? d : t;
+}
+
+/* 들어온 기록이 이미 우리 자료 안에 있는지 봅니다.
+   한쪽에서 여러 건을 하나로 합쳐 둔 경우를 양쪽 다 잡아야 합니다.
+   - 우리 쪽이 합쳐 둔 경우: 들어온 글이 우리 글 더미 안에 들어 있습니다.
+   - 들어온 쪽이 합쳐 둔 경우: 들어온 글이 우리 기록 여럿을 품고 있습니다.
+     이때는 들어온 글이 거의 다 우리 것으로 채워질 때만 겹친 것으로 봅니다.
+     새 내용이 섞여 있으면 그대로 들여와야 하기 때문입니다. */
+const COVER_MIN = 0.85;
+function alreadyHere(body, blob, texts){
+  if(body.length < DUP_MIN) return false;
+  if(blob.includes(body)) return true;
+  if(body.length < 40) return false;
+  // 우리 기록 두 건 이상을 품고 있고, 들어온 글이 거의 다 그것으로 채워질 때만
+  // 합쳐 둔 같은 내용으로 봅니다. 한 건만 품고 있으면 새 이야기가 붙은 것일 수 있습니다.
+  let cover = 0, hits = 0;
+  texts.forEach(x => {
+    if(x.length >= DUP_MIN && body.includes(x)){ cover += x.length; hits++; }
+  });
+  return hits >= 2 && cover >= body.length * COVER_MIN;
+}
+
 /* 들어온 자료를 우리 자료와 견주어, 겹치는 기록에 표시를 답니다. */
 function buildMergePlan(inc){
   const myIds = new Set();
@@ -2851,10 +2877,17 @@ function buildMergePlan(inc){
     const gname = new Map(((it.groups)||[]).map(g => [g.id, g.name]));
     const mine = state.topics.find(t => normText(t.name) === normText(it.name)) || null;
     const seen = new Set();
-    if(mine) mine.items.forEach(i => seen.add(itemKey(i)));
+    const texts = [];
+    if(mine) mine.items.forEach(i => {
+      seen.add(itemKey(i));
+      const b = itemBody(i);
+      if(b) texts.push(b);
+    });
+    const blob = HAY_SEP + texts.join(HAY_SEP) + HAY_SEP;
 
     const rows = (it.items || []).map(i => {
-      const dup = myIds.has(i.id) || seen.has(itemKey(i));
+      const dup = myIds.has(i.id) || seen.has(itemKey(i))
+        || alreadyHere(itemBody(i), blob, texts);
       return { item: i, groupName: i.groupId ? (gname.get(i.groupId) || "") : "", dup, pick: !dup };
     });
     return { name: it.name, note: it.note || "", section: it.section || "",
