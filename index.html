@@ -237,6 +237,25 @@ section.panel{padding:22px 26px;max-width:940px}
 }
 .entry .acts{margin-top:6px;display:flex;gap:4px}
 
+/* ── 사진 ── */
+.shots{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.shot{padding:0;line-height:0;cursor:zoom-in;background:var(--code-bg);
+  border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+.shot img{width:116px;height:86px;object-fit:cover;display:block}
+.shot:hover{border-color:var(--accent)}
+.lens{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:30;cursor:zoom-out;
+  display:flex;align-items:center;justify-content:center;padding:22px}
+.lens img{max-width:100%;max-height:100%;object-fit:contain;border-radius:3px}
+.lens .cap{position:absolute;left:12px;right:12px;bottom:12px;text-align:center;
+  color:#e8e8e8;font-size:12.5px;word-break:break-all}
+.imgedit{display:flex;flex-wrap:wrap;gap:7px;margin-top:7px}
+.imgedit figure{margin:0;position:relative;border:1px solid var(--rule);
+  border-radius:3px;overflow:hidden;line-height:0}
+.imgedit img{width:96px;height:72px;object-fit:cover;display:block}
+.imgedit .rm{position:absolute;top:2px;right:2px;border:0;border-radius:2px;cursor:pointer;
+  background:rgba(0,0,0,.64);color:#fff;font-size:12px;line-height:1;padding:3px 6px}
+.imghint{font-size:11.5px;color:var(--ink-soft);margin-top:5px}
+
 .empty{color:var(--ink-soft);padding:34px 0;max-width:56ch}
 .empty b{display:block;color:var(--ink);margin-bottom:5px}
 
@@ -300,6 +319,10 @@ section.panel{padding:22px 26px;max-width:940px}
 .moving{background:var(--code-bg);border:1px solid var(--rule-soft);border-radius:3px;
   padding:9px 12px;margin-bottom:14px;line-height:1.5}
 .moving .tag{font-size:11.5px}
+.moving .mvlist{margin-top:7px;font-size:12.5px;color:var(--ink-soft);max-height:150px;overflow:auto}
+.moving .mvlist .cd{font-variant-numeric:tabular-nums;font-size:11.5px}
+.chk{display:flex;align-items:center;gap:7px;font-size:13px;margin:0 0 12px;cursor:pointer}
+.chk input{width:15px;height:15px}
 .bulk{display:flex;gap:6px;align-items:center;flex-wrap:wrap;
   padding:8px 2px 10px;font-size:12.5px;color:var(--ink-soft)}
 .bulk-sp{flex:1}
@@ -460,6 +483,7 @@ section.panel{padding:22px 26px;max-width:940px}
   #printArea th{background:#eee}
   #printArea tr{break-inside:avoid}
   #printArea .pd{white-space:pre-wrap;color:#333;margin-top:2px;font-size:11px}
+  #printArea .pimg{max-width:220px;max-height:165px;margin:4px 5px 0 0;border:1px solid #999}
 }
 </style>
 </head>
@@ -486,7 +510,7 @@ section.panel{padding:22px 26px;max-width:940px}
         <button class="btn" id="btnMerge">파일 합치기 (추가)</button>
         <hr>
         <button class="btn danger" id="btnReset" hidden>모두 지우기</button>
-        <div class="menu-ver">2026-09-06 6판</div>
+        <div class="menu-ver">2026-09-08 7판</div>
       </div>
     </div>
     <span class="dirty" id="dirty" hidden>저장 안 됨</span>
@@ -598,6 +622,7 @@ function status(text, cls){
 
 let saveTimer = null;
 let savePending = false;
+let quotaFull = false;   // 브라우저 저장 한도를 넘겼는지
 function storeSave(){
   clearTimeout(saveTimer);
   savePending = true;
@@ -613,7 +638,12 @@ async function doSave(){
     try{
       await backendSet(STORE_KEY, JSON.stringify(state));
       okLocal = true;
-    }catch(err){ console.error(err); storeOk = false; }
+    }catch(err){
+      console.error(err);
+      storeOk = false;
+      // 사진을 넣다 보면 브라우저 저장 한도(보통 5MB)에 걸릴 수 있습니다.
+      quotaFull = /quota|exceed|full/i.test(String((err && err.name) || "") + String((err && err.message) || ""));
+    }
   }
   const okFile = await fileWrite();
   if(okLocal || okFile){
@@ -621,7 +651,9 @@ async function doSave(){
     status(okFile ? "자동 저장됨 · 파일 동기화" : "자동 저장됨", "ok");
   }else{
     savePending = true;
-    status("자동 저장 안 됨 — 파일로 내보내세요");
+    status(quotaFull
+      ? "저장 공간이 찼습니다 — 사진을 줄이거나 동기화 파일·내보내기를 쓰세요"
+      : "자동 저장 안 됨 — 파일로 내보내세요");
   }
 }
 /* 탭을 닫거나 화면을 벗어날 때, 아직 저장 안 된 변경을 그 자리에서 저장합니다. */
@@ -1002,6 +1034,9 @@ function entryHTML(t, i){
         ${tags.join("")}</div>
       ${entryTextHTML(i)}
       ${i.path?`<div class="path">${esc(i.path)}</div>`:""}
+      ${(i.imgs||[]).length?`<div class="shots">${i.imgs.map(x =>
+        `<button class="shot" data-shot="${i.id}|${x.id}" title="${esc(x.name||"사진")} — 눌러서 크게 보기">
+           <img src="${x.data}" alt="${esc(x.name||"사진")}" loading="lazy"></button>`).join("")}</div>`:""}
       ${(i.comments||[]).length?`<div class="cmts">${i.comments.map(c =>
         `<div class="cmt"><span class="cd">${esc(c.date)}</span><span>${esc(c.text)}</span>
          <button class="cmt-x" data-cdel="${i.id}|${c.id}" title="경과 지우기">×</button></div>`).join("")}</div>`:""}
@@ -1019,6 +1054,21 @@ function entryHTML(t, i){
 }
 
 function sortKey(i){ return (i.date||"") + "T" + (i.time||""); }
+
+/* 기록을 실제로 일어난 순서(옛것 → 새것)로 세웁니다.
+   날짜·시각이 같으면 담긴 차례(seq)를, 그것도 같으면 id 로 갈라
+   어느 브라우저에서든 늘 같은 순서가 나오게 합니다.
+   타임라인은 이 순서를 뒤집어(새것 → 옛것) 보여 주고,
+   합치기·인쇄처럼 "읽는" 곳에서는 이 순서 그대로 씁니다. */
+function byTimeAsc(a, b){
+  const ka = sortKey(a), kb = sortKey(b);
+  if(ka !== kb) return ka < kb ? -1 : 1;
+  const sa = Number(a.seq) || 0, sb = Number(b.seq) || 0;
+  if(sa !== sb) return sa - sb;
+  const ia = String(a.id || ""), ib = String(b.id || "");
+  return ia === ib ? 0 : (ia < ib ? -1 : 1);
+}
+function byTimeDesc(a, b){ return -byTimeAsc(a, b); }
 
 /* 날짜 구분선: "2026-02-12 (목)" */
 function fmtDay(d){
@@ -1051,7 +1101,7 @@ function visibleItems(t){
   if(filter.channel) items = items.filter(i => i.channel === filter.channel);
   if(filter.openOnly) items = items.filter(i => i.kind === "할일" && !i.done);
   if(filter.unseenOnly) items = items.filter(i => !i.seen);
-  items.sort((a,b) => sortKey(b).localeCompare(sortKey(a)) || (b.seq||0)-(a.seq||0));
+  items.sort(byTimeDesc);
   return items;
 }
 
@@ -1066,10 +1116,11 @@ function tableHTML(t, items){
     <thead><tr><th>날짜</th><th>유형</th><th>내용</th><th>담당</th><th>기한·상태</th><th></th></tr></thead>
     <tbody>${items.map(i => {
       const st = i.kind === "할일" ? (i.done ? "완료" : (i.doing ? "진행" : "대기")) : "";
+      const pic = (i.imgs || []).length ? ` <span class="tag">사진 ${i.imgs.length}</span>` : "";
       return `<tr class="${i.seen?"seen":""}">
         <td class="cd">${esc(i.date||"")}${i.time?`<br>${esc(i.time)}`:""}</td>
         <td>${esc(i.kind)}</td>
-        <td>${i.pinned?"📌 ":""}${esc(i.title)}${i.path?`<div class="where">${esc(i.path)}</div>`:""}</td>
+        <td>${i.pinned?"📌 ":""}${esc(i.title)}${pic}${i.path?`<div class="where">${esc(i.path)}</div>`:""}</td>
         <td>${esc(i.owner||"")}</td>
         <td class="cd">${esc(i.due||"")}${st?`<br>${esc(st)}`:""}</td>
         <td><button class="btn small ghost" data-edit="${i.id}">수정</button></td>
@@ -1295,6 +1346,7 @@ function renderPanel(){
       <button class="btn small" id="mergeClear">선택 해제</button>
       <button class="btn small" id="doSeen" ${picked.size<1?"disabled":""}>확인 표시</button>
       <button class="btn small" id="doGroup" ${picked.size<1?"disabled":""}>소주제로 묶기</button>
+      <button class="btn small" id="doMoveMany" ${picked.size<1||state.topics.length<2?"disabled":""}>주제 옮기기</button>
       <button class="btn small primary" id="doMerge" ${picked.size<2?"disabled":""}>한 기록으로 합치기</button>
     </div>`:""}
     </div>
@@ -1377,6 +1429,83 @@ const TEMPLATES = [
   { name: "할일", kind: "할일", channel: "기타", detail: "" }
 ];
 
+/* ─────────── 사진 붙이기 ───────────
+   사진은 어떤 서버로도 보내지 않고, 기록 안에 함께 저장됩니다.
+   원본 그대로 담으면 브라우저 저장 공간이 금방 차기 때문에
+   긴 변 1280px, JPEG 로 줄여서 담습니다. */
+const IMG_MAX = 1280;      // 긴 변 최대 픽셀
+const IMG_Q = 0.72;        // JPEG 품질
+const IMG_WARN = 4 * 1024 * 1024;   // 이만큼 넘으면 저장 공간을 걱정할 때입니다
+
+function shrinkImage(file){
+  return new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onerror = () => rej(fr.error || new Error("읽기 실패"));
+    fr.onload = () => {
+      const src = String(fr.result || "");
+      const im = new Image();
+      im.onerror = () => rej(new Error("이미지를 열지 못했습니다."));
+      im.onload = () => {
+        const k = Math.min(1, IMG_MAX / Math.max(im.width, im.height));
+        const w = Math.max(1, Math.round(im.width * k));
+        const h = Math.max(1, Math.round(im.height * k));
+        const c = document.createElement("canvas");
+        c.width = w; c.height = h;
+        const cx = c.getContext("2d");
+        cx.fillStyle = "#fff"; cx.fillRect(0, 0, w, h);   // 투명한 곳은 흰 바탕으로
+        cx.drawImage(im, 0, 0, w, h);
+        let data = c.toDataURL("image/jpeg", IMG_Q);
+        if(k === 1 && data.length > src.length) data = src;   // 줄여서 더 커지면 원본을 씁니다
+        res({ id: uid(), name: file.name || "사진", w, h, data });
+      };
+      im.src = src;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+
+/* 고른 파일 중 이미지만 골라 줄여 담습니다. 못 읽은 파일은 건너뜁니다. */
+async function addImages(files, list){
+  const pics = Array.from(files || []).filter(f => /^image\//.test(f.type || ""));
+  if(!pics.length) return 0;
+  let n = 0;
+  for(const f of pics){
+    try{ list.push(await shrinkImage(f)); n++; }
+    catch(err){ console.error(f.name, err); }
+  }
+  return n;
+}
+
+function imgBytes(list){
+  return (list || []).reduce((a, x) => a + (x && x.data ? x.data.length : 0), 0);
+}
+/* 저장 공간이 빠듯해지면 미리 알려 줍니다. */
+function warnIfHeavy(){
+  let size = 0;
+  try{ size = JSON.stringify(state).length; }catch{ return; }
+  if(size > IMG_WARN)
+    flash(`저장 자료가 ${Math.round(size/1024/1024*10)/10}MB 입니다. 사진이 많으면 동기화 파일 연결이나 내보내기를 함께 쓰세요.`);
+}
+
+/* 사진을 크게 봅니다. 아무 데나 누르거나 Esc 로 닫습니다. */
+function openLens(im){
+  const v = document.createElement("div");
+  v.className = "lens";
+  v.innerHTML = `<img alt="${esc(im.name || "사진")}"><div class="cap">${esc(im.name || "")}</div>`;
+  v.querySelector("img").src = im.data;
+  const close = e => {
+    if(e.type === "click" || e.key === "Escape"){
+      document.removeEventListener("keydown", close);
+      v.remove();
+    }
+  };
+  v.onclick = close;
+  document.addEventListener("keydown", close);
+  document.body.appendChild(v);
+}
+
+let formImgs = [];   // 기록 창에서 편집 중인 사진 목록
+
 function itemForm(item, topic){
   const it = item || {kind:"자료", channel:"공유폴더", date:today(), time:"", title:"", detail:"", path:"", owner:"", due:""};
   const groups = (topic && topic.groups) || [];
@@ -1403,6 +1532,10 @@ function itemForm(item, topic){
     <div class="field"><label for="f_owner">담당</label><input id="f_owner" value="${esc(it.owner)}"></div>
     <div class="field"><label for="f_due">기한 (할일일 때)</label><input id="f_due" type="date" value="${esc(it.due)}"></div>
   </div>
+  <div class="field"><label for="f_img">사진 (여러 장 가능 · 창 안에서 Ctrl+V 로 붙여넣기도 됩니다)</label>
+    <input id="f_img" type="file" accept="image/*" multiple>
+    <div class="imgedit" id="f_imgwrap"></div>
+    <div class="imghint" id="f_imghint"></div></div>
   <div class="field"><label for="f_tags">키워드 (해시태그)</label>
     <input id="f_tags" value="${esc((it.tags||[]).map(w => "#" + w).join(" "))}"
       placeholder="#보고서 #일정 — 띄어쓰기로 구분, 본문에 #키워드 라고 써도 자동 인식"></div>
@@ -1434,7 +1567,8 @@ function readItemForm(){
     title: $("#f_title").value.trim(), detail: $("#f_detail").value.trim(),
     path: $("#f_path").value.trim(), owner: $("#f_owner").value.trim(), due: $("#f_due").value,
     tags: ($("#f_tags") ? $("#f_tags").value.split(/[\s,]+/) : [])
-      .map(s => s.replace(/^#+/, "").trim()).filter(Boolean)
+      .map(s => s.replace(/^#+/, "").trim()).filter(Boolean),
+    imgs: formImgs.slice()
   });
 }
 
@@ -1454,8 +1588,8 @@ function itemLines(i){
    소주제 안에서 합치면 그 소주제에 그대로 남고,
    발화자가 바뀔 때마다 이름을 앞에 세워 누가 한 말인지 보이게 합니다. */
 function mergePicked(t){
-  const sel = t.items.filter(i => picked.has(i.id))
-    .sort((a,b) => sortKey(a).localeCompare(sortKey(b)) || (a.seq||0)-(b.seq||0));
+  // 화면에는 새것이 위로 오지만, 합칠 때는 반드시 옛것 → 새것 차례로 이어 붙입니다.
+  const sel = t.items.filter(i => picked.has(i.id)).sort(byTimeAsc);
   if(sel.length < 2) return;
   pushUndo("기록 합치기");
 
@@ -1515,6 +1649,7 @@ function mergePicked(t){
     pinned: sel.some(i => i.pinned),
     doing: sel.some(i => i.doing && !i.done),
     tags: [...new Set(sel.reduce((a, i) => a.concat(i.tags || []), []))],
+    imgs: sel.reduce((a, i) => a.concat(i.imgs || []), []),
     comments: sel.reduce((a, i) => a.concat(i.comments || []), [])
   };
 
@@ -1591,6 +1726,70 @@ function openMoveModal(from, item){
   };
 }
 
+/* 선택한 기록 여러 건을 한 번에 다른 주제로 옮깁니다.
+   같은 이름의 소주제가 옮겨 갈 주제에도 있으면 그 안으로 들어가고,
+   없으면 (원하는 경우) 같은 이름으로 새로 만들어 함께 옮깁니다. */
+function openMoveManyModal(from){
+  const others = state.topics.filter(t => t.id !== from.id);
+  if(!others.length){ alert("옮길 다른 주제가 없습니다."); return; }
+  const sel = from.items.filter(i => picked.has(i.id)).sort(byTimeAsc);
+  if(!sel.length) return;
+
+  // 옮길 기록들의 내용을 합쳐 어느 주제가 어울리는지 미리 골라 둡니다.
+  const blob = sel.map(i => `${i.title} ${i.path} ${i.detail}`).join(" ");
+  const guessId = matchTopic(blob, topicIndex(allOwners(), from.section || ""));
+  const target = (guessId && guessId !== from.id) ? guessId : null;
+
+  const gnames = [...new Set(sel.map(i =>
+    i.groupId ? ((from.groups||[]).find(g => g.id === i.groupId)||{}).name : "").filter(Boolean))];
+
+  const v = modal("선택한 기록 옮기기",
+    `<div class="moving">
+       <b>${sel.length}건</b>을 옮깁니다 (현재 ${esc(from.name)})
+       <div class="mvlist">${sel.slice(0, 8).map(i =>
+         `<div><span class="cd">${esc(i.date||"")}</span> ${esc(i.title)}</div>`).join("")}
+         ${sel.length > 8 ? `<div class="cd">… 외 ${sel.length - 8}건</div>` : ""}</div>
+     </div>
+     <div class="field"><label for="mm_t">옮길 주제</label>
+       <select id="mm_t">${others.map(t =>
+         `<option value="${t.id}" ${t.id===target?"selected":""}>${esc(t.name)}</option>`).join("")}</select></div>
+     ${gnames.length?`<label class="chk"><input type="checkbox" id="mm_g" checked>
+       소주제(${gnames.map(esc).join(", ")})도 그대로 가져가기</label>`:""}`,
+    `<button class="btn" data-x>취소</button><button class="btn primary" data-ok>옮기기</button>`);
+
+  v.querySelector("[data-x]").onclick = () => v.remove();
+  v.querySelector("[data-ok]").onclick = () => {
+    const to = state.topics.find(t => t.id === v.querySelector("#mm_t").value);
+    if(!to) return;
+    const keepG = !!(v.querySelector("#mm_g") && v.querySelector("#mm_g").checked);
+    pushUndo("선택한 기록 옮기기");
+
+    const ids = new Set(sel.map(i => i.id));
+    const gmap = new Map();                 // 원래 소주제 id → 옮겨 간 주제의 소주제 id
+    sel.forEach(i => {
+      const g = i.groupId ? (from.groups||[]).find(x => x.id === i.groupId) : null;
+      if(!keepG || !g){ i.groupId = null; return; }
+      if(!gmap.has(g.id)){
+        to.groups = to.groups || [];
+        let ng = to.groups.find(x => normText(x.name) === normText(g.name));
+        if(!ng){ ng = { id: uid(), name: g.name, open: true }; to.groups.push(ng); }
+        gmap.set(g.id, ng.id);
+      }
+      i.groupId = gmap.get(g.id);
+    });
+
+    from.items = from.items.filter(x => !ids.has(x.id));
+    sel.forEach(i => to.items.push(i));     // 시간순 그대로 넣습니다
+    // 옮겨 간 주제에 빈 소주제만 남지 않도록 원래 주제의 빈 소주제는 정리합니다.
+    if(from.groups) from.groups = from.groups.filter(g =>
+      from.items.some(i => i.groupId === g.id));
+
+    picked.clear();
+    v.remove(); markDirty(); render();
+    flash(`${sel.length}건을 ${to.name}(으)로 옮겼습니다.`);
+  };
+}
+
 function openItemModal(existing, ownerTopic){
   const owner = ownerTopic || activeTopic();
   const v = modal(existing ? "기록 수정" : "기록 추가", itemForm(existing, owner),
@@ -1605,6 +1804,45 @@ function openItemModal(existing, ownerTopic){
     if(tp.detail) v.querySelector("#f_detail").value = tp.detail;
     v.querySelector("#f_title").focus();
   };
+  // 사진: 파일로 고르거나, 창 안에서 그대로 붙여넣을 수 있습니다.
+  formImgs = ((existing && existing.imgs) || []).slice();
+  const wrap = v.querySelector("#f_imgwrap");
+  const hint = v.querySelector("#f_imghint");
+  const paintImgs = () => {
+    wrap.innerHTML = formImgs.map((x, k) =>
+      `<figure><img alt="${esc(x.name||"사진")}" data-src="${k}">
+        <button type="button" class="rm" data-rmimg="${k}" title="이 사진 빼기">×</button></figure>`).join("");
+    [...wrap.querySelectorAll("img")].forEach(el => { el.src = formImgs[+el.dataset.src].data; });
+    hint.textContent = formImgs.length
+      ? `사진 ${formImgs.length}장 · 약 ${Math.round(imgBytes(formImgs)/1024)}KB (긴 변 ${IMG_MAX}px 로 줄여 저장합니다)`
+      : "";
+  };
+  paintImgs();
+  wrap.onclick = e => {
+    const rm = e.target.closest("[data-rmimg]");
+    if(rm){ formImgs.splice(+rm.dataset.rmimg, 1); paintImgs(); return; }
+    const im = e.target.closest("img");
+    if(im) openLens(formImgs[+im.dataset.src]);
+  };
+  const pickImgs = async files => {
+    const n = await addImages(files, formImgs);
+    if(n) paintImgs();
+    else if(files && files.length) flash("이미지 파일이 아니어서 담지 못했습니다.");
+  };
+  v.querySelector("#f_img").onchange = e => {
+    const fs = [...e.target.files];      // 입력을 비우기 전에 목록을 복사해 둡니다
+    e.target.value = "";
+    pickImgs(fs);
+  };
+  const onPaste = e => {
+    if(!document.body.contains(v)){ document.removeEventListener("paste", onPaste); return; }
+    const veils = document.querySelectorAll(".veil");
+    if(veils[veils.length - 1] !== v) return;        // 위에 다른 창이 있으면 그쪽 몫입니다
+    const files = [...(e.clipboardData ? e.clipboardData.files : [])];
+    if(files.some(f => /^image\//.test(f.type || ""))){ e.preventDefault(); pickImgs(files); }
+  };
+  document.addEventListener("paste", onPaste);
+
   v.querySelector("[data-ok]").onclick = () => {
     const d = readItemForm();
     if(!d.title){ $("#f_title").focus(); return; }
@@ -1616,6 +1854,7 @@ function openItemModal(existing, ownerTopic){
       t.items.push(Object.assign({id:uid(), done:false, seq:Date.now()}, d));
     }
     v.remove(); markDirty(); render();
+    if(d.imgs.length) warnIfHeavy();
   };
 }
 
@@ -2100,7 +2339,7 @@ function openEmlModal(files){
       v.querySelector(".hint").textContent = "읽어낼 내용을 찾지 못했습니다.";
       return;
     }
-    cands.sort((a,b) => sortKey(a).localeCompare(sortKey(b)));
+    cands.sort(byTimeAsc);
     const notice = markOldCandidates(cands, true);   // 메일은 내용이 같은 것만 걸러냅니다
     guessTopics(cands, fallbackId);
     v.querySelector(".hint").textContent =
@@ -2290,7 +2529,7 @@ function openTxtModal(files){
         "읽어낼 대화를 찾지 못했습니다. 카카오톡 대화 내보내기 .txt 파일인지 확인해 주세요.";
       return;
     }
-    cands.sort((a,b) => sortKey(a).localeCompare(sortKey(b)));
+    cands.sort(byTimeAsc);
     let notice = markOldCandidates(cands);
     if(!anyDate)
       notice = "대화에서 날짜를 인식하지 못해 모두 오늘 날짜로 표시했습니다. " + notice;
@@ -2380,8 +2619,7 @@ function topicPrintHTML(t, full){
   }
 
   if(full){
-    const items = t.items.slice()
-      .sort((a,b) => sortKey(a).localeCompare(sortKey(b)) || (a.seq||0)-(b.seq||0));
+    const items = t.items.slice().sort(byTimeAsc);
     if(items.length){
       any = true;
       P.push(`<h3>전체 기록 (시간순)</h3>`, ptable(["날짜","유형","출처","내용","담당·기한"],
@@ -2392,6 +2630,7 @@ function topicPrintHTML(t, full){
           if(i.detail && (clipped || normText(i.detail) !== normText(i.title)))
             body += `<div class="pd">${esc(i.detail)}</div>`;
           if(i.path) body += `<div class="pd">→ ${esc(i.path)}</div>`;
+          (i.imgs || []).forEach(x => { body += `<img class="pimg" src="${x.data}">`; });
         const tg = itemTags(i);
         if(tg.length) body += `<div class="pd">${tg.map(w => "#" + esc(w)).join(" ")}</div>`;
         (i.comments || []).forEach(c => {
@@ -2778,6 +3017,11 @@ function normalizeItem(i){
     doing: !!i.doing,
     tags: Array.isArray(i.tags)
       ? i.tags.map(x => String(x).replace(/^#+/, "").trim()).filter(Boolean) : [],
+    imgs: Array.isArray(i.imgs)
+      ? i.imgs.filter(x => x && typeof x.data === "string" && /^data:image\//.test(x.data))
+              .map(x => ({ id: x.id || uid(), name: String(x.name || "사진"),
+                           w: Number(x.w) || 0, h: Number(x.h) || 0, data: x.data }))
+      : [],
     comments: Array.isArray(i.comments)
       ? i.comments.map(c => ({
           id: c.id || uid(), date: fixDate(c.date) || today(),
@@ -3183,6 +3427,7 @@ $("#panel").addEventListener("click", e => {
   if(e.target.id === "mergeClear"){ picked.clear(); renderPanel(); return; }
   if(e.target.id === "doMerge"){ if(t) mergePicked(t); return; }
   if(e.target.id === "doGroup"){ if(t) openGroupModal(t); return; }
+  if(e.target.id === "doMoveMany"){ if(t) openMoveManyModal(t); return; }
   if(e.target.id === "doSeen"){
     if(!t) return;
     pushUndo("확인 표시");
@@ -3277,6 +3522,14 @@ $("#panel").addEventListener("click", e => {
     else if(k === "open") filter.openOnly = !filter.openOnly;
     else if(k === "unseen") filter.unseenOnly = !filter.unseenOnly;
     renderPanel(); return;
+  }
+  const sh = e.target.closest("[data-shot]");
+  if(sh){
+    const [iid, pid] = sh.dataset.shot.split("|");
+    const f = findOwner(iid);
+    const im = f && (f.i.imgs || []).find(x => x.id === pid);
+    if(im) openLens(im);
+    return;
   }
   const mv = e.target.closest("[data-move]");
   if(mv){ const f = findOwner(mv.dataset.move); if(f) openMoveModal(f.t, f.i); return; }
