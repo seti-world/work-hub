@@ -256,6 +256,16 @@ section.panel{padding:22px 26px;max-width:940px}
   background:rgba(0,0,0,.64);color:#fff;font-size:12px;line-height:1;padding:3px 6px}
 .imghint{font-size:11.5px;color:var(--ink-soft);margin-top:5px}
 
+/* ── 파일 끌어다 놓기 ── */
+.dropveil{position:fixed;inset:0;z-index:40;display:flex;pointer-events:none;
+  align-items:center;justify-content:center;padding:24px;
+  background:var(--veil);backdrop-filter:blur(1px)}
+.dropveil .box{background:var(--surface);border:2px dashed var(--accent);border-radius:6px;
+  padding:26px 34px;text-align:center;line-height:1.6;max-width:34ch;color:var(--ink)}
+.dropveil[hidden]{display:none}
+.dropveil .box b{display:block;font-size:15px;margin-bottom:5px}
+.dropveil .box span{font-size:12.5px;color:var(--ink-soft)}
+
 .empty{color:var(--ink-soft);padding:34px 0;max-width:56ch}
 .empty b{display:block;color:var(--ink);margin-bottom:5px}
 
@@ -510,13 +520,14 @@ section.panel{padding:22px 26px;max-width:940px}
         <button class="btn" id="btnMerge">파일 합치기 (추가)</button>
         <hr>
         <button class="btn danger" id="btnReset" hidden>모두 지우기</button>
-        <div class="menu-ver">2026-09-08 7판</div>
+        <div class="menu-ver">2026-09-08 8판</div>
       </div>
     </div>
     <span class="dirty" id="dirty" hidden>저장 안 됨</span>
   </div>
   <input type="file" id="fileIn" accept=".json,application/json,text/plain,*/*" hidden>
   <input type="file" id="mergeIn" accept=".json,application/json,text/plain,*/*" multiple hidden>
+
   <input type="file" id="emlIn" accept=".eml,message/rfc822" multiple hidden>
   <input type="file" id="txtIn" accept=".txt,text/plain" multiple hidden>
 </header>
@@ -541,6 +552,11 @@ section.panel{padding:22px 26px;max-width:940px}
 </main>
 
 <button id="fab" title="기록·대화 추가">＋</button>
+<div class="dropveil" id="dropVeil" hidden>
+  <div class="box"><b>여기에 놓으세요</b>
+    <span>대화 파일(.txt)과 메일 파일(.eml)을 바로 읽어 들입니다.</span></div>
+</div>
+
 
 <script>
 "use strict";
@@ -1326,8 +1342,8 @@ function renderPanel(){
     <div class="actions inputrow">
       <button class="btn primary" id="addItem">+ 기록 추가</button>
       <button class="btn" id="pasteHere">대화 붙여넣기</button>
-      <button class="btn" id="txtHere">대화 파일 (.txt)</button>
-      <button class="btn" id="emlHere">메일 파일 (.eml)</button>
+      <button class="btn" id="txtHere" title="창에 파일을 끌어다 놓아도 됩니다">대화 파일 (.txt)</button>
+      <button class="btn" id="emlHere" title="창에 파일을 끌어다 놓아도 됩니다">메일 파일 (.eml)</button>
     </div>
     <div class="stickybar">
     ${actionRow(`
@@ -3658,6 +3674,65 @@ function pickFiles(id, run){
   el.onchange = () => { if(el.files.length) run(el.files); };
   el.click();
 }
+/* ─────────── 파일을 창에 끌어다 놓기 ───────────
+   .txt(대화 내보내기)와 .eml(메일)을 창 아무 데나 떨어뜨리면
+   단추로 고른 것과 똑같은 확인 창이 열립니다.
+   기록 창 같은 것이 떠 있을 때는 그 창 몫이므로 건드리지 않습니다. */
+const dropVeil = $("#dropVeil");
+let dragDepth = 0;
+
+const hasFiles = e => {
+  const t = e.dataTransfer && e.dataTransfer.types;
+  return !!t && [...t].includes("Files");
+};
+const modalOpen = () => !!document.querySelector(".veil");
+const showDrop = on => { if(!on) dragDepth = 0; dropVeil.hidden = !on; };
+
+window.addEventListener("dragenter", e => {
+  if(!hasFiles(e) || modalOpen()) return;
+  e.preventDefault();
+  dragDepth++;
+  dropVeil.hidden = false;
+});
+window.addEventListener("dragover", e => {
+  if(!hasFiles(e) || modalOpen()) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "copy";
+});
+window.addEventListener("dragleave", e => {
+  if(dropVeil.hidden) return;
+  if(--dragDepth <= 0) showDrop(false);
+});
+window.addEventListener("drop", e => {
+  if(!hasFiles(e) || modalOpen()) return;
+  e.preventDefault();
+  showDrop(false);
+  takeDropped([...e.dataTransfer.files]);
+});
+// 창 밖으로 끌고 나가거나 Esc 를 누르면 덮개를 걷습니다.
+window.addEventListener("dragend", () => showDrop(false));
+document.addEventListener("keydown", e => { if(e.key === "Escape" && !dropVeil.hidden) showDrop(false); });
+
+/* 떨어뜨린 파일을 종류별로 갈라 알맞은 창을 엽니다. */
+function takeDropped(files){
+  const ext = f => (String(f.name || "").split(".").pop() || "").toLowerCase();
+  const txts = files.filter(f => ext(f) === "txt");
+  const emls = files.filter(f => ext(f) === "eml");
+  const rest = files.filter(f => !txts.includes(f) && !emls.includes(f));
+
+  if(!txts.length && !emls.length){
+    const json = rest.some(f => ext(f) === "json");
+    flash(json
+      ? "JSON 파일은 메뉴 → 불러오기 또는 파일 합치기로 넣어 주세요."
+      : "대화 파일(.txt)과 메일 파일(.eml)만 끌어다 놓을 수 있습니다.");
+    return;
+  }
+  // 두 가지를 함께 놓으면 창이 겹쳐 뜹니다. 위에 뜬 것부터 처리하면 됩니다.
+  if(emls.length) openEmlModal(emls);
+  if(txts.length) openTxtModal(txts);
+  if(rest.length) flash(`${rest.length}개 파일은 종류가 달라 건너뛰었습니다.`);
+}
+
 $("#btnLoad").onclick = () => pickFiles("#fileIn", fs => load(fs[0]));
 $("#btnMerge").onclick = () => pickFiles("#mergeIn", fs => mergeFiles(fs));
 /* 파일 연결이 안 되는 기기(아이폰·아이패드 등)용 안내 */
